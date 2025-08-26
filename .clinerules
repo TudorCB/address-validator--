@@ -1,0 +1,129 @@
+# Shopify Remix App Development Rules for AI Assistants
+
+## Core Shopify Development Principles
+
+### Authentication & Security
+- ALWAYS use `authenticate.admin(request)` for admin routes
+- NEVER bypass Shopify's authentication middleware
+- Environment variables are managed by Shopify CLI, use `process.env.SHOPIFY_API_KEY` etc.
+- Webhooks must use `shopify.authenticate.webhook(request)` 
+
+### Route Structure & Naming
+- App routes must be under `/app` prefix (e.g., `app/routes/app.products.jsx`)
+- Public routes go in root (e.g., `app/routes/_index/route.jsx`)
+- Authentication routes follow Shopify patterns (`app/routes/auth.$.jsx`)
+- Webhook routes follow pattern `webhooks.{topic}`
+
+### Component & UI Patterns
+- Use Shopify Polaris components exclusively
+- Import Polaris CSS: `import polarisStyles from "@shopify/polaris/build/esm/styles.css?url"`
+- Wrap app in `AppProvider` from `@shopify/shopify-app-remix/react`
+- Use `NavMenu` from `@shopify/app-bridge-react` for navigation
+- Always include App Bridge provider for embedded app functionality
+
+### Data Loading & Actions
+- Loaders must call authentication first: `await authenticate.admin(request)`
+- Actions follow same authentication pattern
+- Use Shopify's `boundary.error()` and `boundary.headers()` for error handling
+- GraphQL queries should use `admin.graphql` client from authentication
+
+### Development Commands
+- ALWAYS use `shopify app dev` instead of `npm run dev`
+- Deployment: `shopify app deploy`
+- Configuration: `shopify app config`
+- NEVER modify core Shopify CLI managed files
+
+## Common Pitfalls to Avoid
+
+### Vite Configuration
+- DO NOT modify HMR settings in `vite.config.js`
+- DO NOT change server port configuration
+- DO NOT modify Shopify-specific environment variable handling
+- Preserve the `installGlobals({ nativeFetch: true })` call
+
+### Polaris Component Usage
+- Check current Polaris version in `package.json`
+- Icon names follow specific patterns (e.g., `PlusCircleIcon`)
+- Always import components from main Polaris package
+- Use Page, Layout, Card components for proper structure
+
+### App Bridge Integration
+- NEVER remove AppProvider wrapper
+- NavMenu must be direct child of AppProvider
+- Links must use Remix Link component
+- Preserve embedded app context requirements
+
+## Version-Specific Guidelines
+
+### Current Setup (check package.json for exact versions)
+- Remix v2.x patterns
+- Polaris v12.x icon naming
+- Shopify App Remix v3.x authentication
+- Vite v5.x build system
+
+### Icon Naming Conventions (Polaris v12+)
+- Icons end with `Icon` suffix
+- Use PascalCase: `PlusCircleIcon`, `DeleteIcon`, `EditIcon`
+- Import from `@shopify/polaris`
+- Check Polaris documentation for exact names
+
+## Code Patterns & Templates
+
+### Standard App Route Template
+```javascript
+import { json, redirect } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { authenticate } from "../shopify.server";
+
+export const loader = async ({ request }) => {
+  const { admin, session } = await authenticate.admin(request);
+  // Your logic here
+  return json({ data });
+};
+
+export default function ComponentName() {
+  const { data } = useLoaderData();
+  return (
+    // Your JSX here
+  );
+}
+```
+
+### GraphQL Query Pattern
+```javascript
+const response = await admin.graphql(
+  `#graphql
+  query getProducts {
+    products(first: 10) {
+      nodes {
+        id
+        title
+      }
+    }
+  }`
+);
+```
+
+### Action Handler Pattern
+```javascript
+export const action = async ({ request }) => {
+  const { admin } = await authenticate.admin(request);
+  const formData = await request.formData();
+  // Process form data
+  return json({ success: true });
+};
+```
+
+## Development Workflow
+1. Always start with `shopify app dev`
+2. Test in Shopify Partner dashboard
+3. Use ngrok tunneling for local development
+4. Check console for Shopify CLI logs
+5. Validate webhooks in Partner dashboard
+
+## Troubleshooting Quick Reference
+- Authentication errors: Check session storage setup
+- Missing icons: Verify Polaris version and icon names
+- App not loading: Check App Bridge configuration
+- GraphQL errors: Validate query syntax and permissions
+- Deployment issues: Check app configuration files

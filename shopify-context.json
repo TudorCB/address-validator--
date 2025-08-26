@@ -1,0 +1,122 @@
+{
+  "shopify": {
+    "framework": "Remix v2.x",
+    "polarisVersion": "v12.0.0",
+    "appRemixVersion": "v3.7.0",
+    "viteVersion": "v6.2.2",
+    "authentication": {
+      "admin": "authenticate.admin(request)",
+      "webhook": "shopify.authenticate.webhook(request)",
+      "public": "No authentication required"
+    },
+    "routing": {
+      "appRoutes": "app/routes/app.*.jsx",
+      "publicRoutes": "app/routes/*/route.jsx",
+      "webhookRoutes": "app/routes/webhooks.*.jsx",
+      "authRoutes": "app/routes/auth.$.jsx"
+    },
+    "components": {
+      "appProvider": "@shopify/shopify-app-remix/react",
+      "navMenu": "@shopify/app-bridge-react",
+      "polaris": "@shopify/polaris"
+    },
+    "api": {
+      "graphql": "admin.graphql",
+      "rest": "admin.rest",
+      "client": "Available in authenticated contexts"
+    },
+    "commonIcons": {
+      "add": "PlusCircleIcon",
+      "delete": "DeleteIcon",
+      "edit": "EditIcon",
+      "save": "SaveIcon",
+      "cancel": "CancelIcon",
+      "view": "ViewIcon",
+      "search": "SearchIcon",
+      "filter": "FilterIcon",
+      "settings": "SettingsIcon",
+      "help": "HelpIcon",
+      "info": "InfoIcon",
+      "warning": "WarningIcon",
+      "error": "CriticalIcon",
+      "success": "CircleTickIcon"
+    },
+    "layoutComponents": [
+      "Page",
+      "Layout",
+      "Layout.Section",
+      "Card",
+      "Banner",
+      "EmptyState"
+    ],
+    "dataComponents": [
+      "ResourceList",
+      "DataTable",
+      "Tabs",
+      "Filters"
+    ],
+    "formComponents": [
+      "Form",
+      "FormLayout",
+      "TextField",
+      "Select",
+      "Checkbox",
+      "Button"
+    ],
+    "development": {
+      "command": "shopify app dev",
+      "deploy": "shopify app deploy",
+      "config": "shopify app config",
+      "env": "shopify app env"
+    },
+    "directories": {
+      "app": "app/",
+      "routes": "app/routes/",
+      "components": "app/components/",
+      "extensions": "extensions/",
+      "prisma": "prisma/"
+    },
+    "files": {
+      "mainAppRoute": "app/routes/app.jsx",
+      "shopifyServer": "app/shopify.server.js",
+      "viteConfig": "vite.config.js",
+      "packageJson": "package.json",
+      "shopifyAppToml": "shopify.app.toml"
+    },
+    "errorHandling": {
+      "boundary": "@shopify/shopify-app-remix/server",
+      "functions": ["boundary.error()", "boundary.headers()"]
+    },
+    "session": {
+      "storage": "@shopify/shopify-app-session-storage-prisma",
+      "model": "Session in prisma/schema.prisma"
+    }
+  },
+  "project": {
+    "name": "address-validator",
+    "type": "Shopify Embedded App",
+    "features": [
+      "Address validation",
+      "Shopify authentication",
+      "Embedded app interface",
+      "Webhook processing"
+    ],
+    "existingRoutes": [
+      "app._index.jsx",
+      "app.additional.jsx", 
+      "app.jsx",
+      "app.products.jsx",
+      "auth.$.jsx",
+      "webhooks.app.scopes_update.jsx",
+      "webhooks.app.uninstalled.jsx",
+      "_index/route.jsx",
+      "auth.login/route.jsx"
+    ]
+  },
+  "patterns": {
+    "loaderTemplate": "import { json } from \"@remix-run/node\";\nimport { authenticate } from \"../shopify.server\";\n\nexport const loader = async ({ request }) => {\n  const { admin, session } = await authenticate.admin(request);\n  // Your logic here\n  return json({ data });\n};",
+    "actionTemplate": "import { json } from \"@remix-run/node\";\nimport { authenticate } from \"../shopify.server\";\n\nexport const action = async ({ request }) => {\n  const { admin } = await authenticate.admin(request);\n  const formData = await request.formData();\n  // Process form data\n  return json({ success: true });\n};",
+    "graphqlQueryTemplate": "const response = await admin.graphql(\n  `#graphql\n  query getProducts {\n    products(first: 10) {\n      nodes {\n        id\n        title\n      }\n    }\n  }`\n);",
+    "webhookTemplate": "import { shopify } from \"../shopify.server\";\n\nexport const action = async ({ request }) => {\n  const { topic, shop, session, admin, payload } = await shopify.authenticate.webhook(request);\n  // Handle webhook payload\n  return new Response();\n};"
+  }
+}
