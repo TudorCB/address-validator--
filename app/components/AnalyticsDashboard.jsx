@@ -62,6 +62,31 @@ function SimpleUSHeatMap() {
   );
 }
 
+function CircularPickupRadiusViz() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+      <div style={{ 
+        width: '120px', 
+        height: '120px', 
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #E8F5E8, #C1E8C1)',
+        border: '2px solid #B8E6B8',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative'
+      }}>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: '#2D7A2D'
+        }} />
+      </div>
+    </div>
+  );
+}
+
 export default function AnalyticsDashboard() {
   // Filters and local UI state
   const [range, setRange] = React.useState("30d");
@@ -146,62 +171,65 @@ export default function AnalyticsDashboard() {
   // no logs table on the simplified dashboard
 
   return (
-    <Page title="Address validation Analytics" subtitle="To provide actionable insights & Solutions">
-      {/* Filters */}
-      <Box paddingBlockEnd="300">
-        <Card>
-          <Box padding="300">
-            <InlineStack gap="400" wrap={false} align="space-between" blockAlign="center">
-              <Text as="h2" variant="headingMd">Overview</Text>
-              <InlineStack gap="300">
-                <Select
-                  label="Range"
-                  labelHidden
-                  options={[
-                    { label: "7 days", value: "7d" },
-                    { label: "14 days", value: "14d" },
-                    { label: "30 days", value: "30d" },
-                  ]}
-                  value={range}
-                  onChange={setRange}
-                />
-                <Select
-                  label="Source"
-                  labelHidden
-                  options={[
-                    { label: "All", value: "all" },
-                    { label: "Checkout", value: "checkout" },
-                    { label: "Thank-you", value: "thank_you" },
-                    { label: "Account", value: "customer_account" },
-                  ]}
-                  value={segment}
-                  onChange={setSegment}
-                />
-              </InlineStack>
-            </InlineStack>
-          </Box>
-        </Card>
+    <Box>
+      {/* Header with Branding */}
+      <Box paddingBlockEnd="400">
+        <InlineStack align="space-between" blockAlign="center">
+          <InlineStack gap="200" blockAlign="center">
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              backgroundColor: '#00A047', 
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold'
+            }}>
+              🏠
+            </div>
+            <Text as="h1" variant="headingLg">Address Validator ++</Text>
+          </InlineStack>
+          <Select
+            label="Time Range"
+            labelHidden
+            options={[
+              { label: "Last 7 days", value: "7d" },
+              { label: "Last 14 days", value: "14d" },
+              { label: "Last 30 days", value: "30d" },
+            ]}
+            value={range}
+            onChange={setRange}
+          />
+        </InlineStack>
       </Box>
 
+      <Page title="Address validation Analytics" subtitle="To provide actionable insights & Solutions">
+
       {/* KPIs */}
-      <Grid columns={{ sm: 1, md: 2, lg: 4 }} gap="400">
+      <Grid columns={{ sm: 1, md: 3, lg: 3 }} gap="400">
         <Grid.Cell>
           <KpiCard
             title="Validations"
             value={(k.totalValidations ?? 0).toLocaleString()}
-            trend="+12% vs last month"
-            trendPositive
-            icon={<SafeIcon name="ArrowUpIcon" />}
+            subtitle="Validations"
           />
         </Grid.Cell>
         <Grid.Cell>
-          <KpiCard title="Addresses Corrected" value={(k.corrected ?? 0).toLocaleString()} subtitle="Corrected" icon={<SafeIcon name="WrenchIcon" />} />
+          <KpiCard 
+            title="Savings" 
+            value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} 
+            subtitle="Savings" 
+          />
         </Grid.Cell>
         <Grid.Cell>
-          <KpiCard title="Deliveries Blocked" value={(k.blocked ?? 0).toLocaleString()} subtitle="Blocked" icon={<SafeIcon name="ShieldIcon" />} />
-        </Grid.Cell>
-        <Grid.Cell>
-          <KpiCard title="Estimated Savings" value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} subtitle="Based on avg $18/failed delivery" icon={<SafeIcon name="CashDollarIcon" />} />
+          <KpiCard 
+            title="Blocked" 
+            value={(k.blocked ?? 0).toLocaleString()} 
+            subtitle="Blocked" 
+          />
         </Grid.Cell>
       </Grid>
 
@@ -233,98 +261,34 @@ export default function AnalyticsDashboard() {
         </Card>
       </Box>
 
-      {/* Insights + Top Problems */}
+      {/* Three-column layout: ZIP codes, Cities, Insights */}
       <Box paddingBlockStart="400">
-        <Grid columns={{ sm: 1, md: 2, lg: 2 }} gap="400">
-          <Grid.Cell>
-            <Card>
-              <Box padding="400">
-                <Text as="h3" variant="headingMd">Insights</Text>
-                <Box paddingBlockStart="300">
-                  <BlockStack gap="300">
-                    <BlockStack gap="100">
-                      <InlineStack blockAlign="center" gap="200">
-                        <input
-                          type="checkbox"
-                          role="switch"
-                          aria-label="Enable PO Box blocking"
-                          checked={poBoxBlock}
-                          onChange={(e) => setPoBoxBlock(e.target.checked)}
-                        />
-                        <Text as="p" variant="bodyMd">Enable PO Box blocking</Text>
-                      </InlineStack>
-                      <Text tone="subdued">{pctPoBox}% of addresses in the last {range} were PO Boxes.</Text>
-                    </BlockStack>
-
-                    <Divider />
-
-                    <BlockStack gap="100">
-                      <InlineStack blockAlign="center" gap="200">
-                        <input
-                          type="checkbox"
-                          role="switch"
-                          aria-label="Enforce complete addresses"
-                          checked={enforceUnit}
-                          onChange={(e) => setEnforceUnit(e.target.checked)}
-                        />
-                        <Text as="p" variant="bodyMd">Enforce complete addresses</Text>
-                      </InlineStack>
-                      <Text tone="subdued">{pctMissingUnit}% of validations are missing apartment numbers.</Text>
-                    </BlockStack>
-
-                    <Divider />
-
-                    <BlockStack gap="100">
-                      <InlineStack blockAlign="center" gap="200">
-                        <input
-                          type="checkbox"
-                          role="switch"
-                          aria-label="Auto-apply corrections"
-                          checked={autoApply}
-                          onChange={(e) => setAutoApply(e.target.checked)}
-                        />
-                        <Text as="p" variant="bodyMd">Auto-apply corrections</Text>
-                      </InlineStack>
-                      <Text tone="subdued">Automatically adjust corrections where possible ({pctCorrected}% corrected).</Text>
-                    </BlockStack>
-
-                    <Box paddingBlockStart="300">
-                      <Button variant="primary" onClick={applySettings}>Apply All Changes</Button>
-                    </Box>
-                  </BlockStack>
-                </Box>
-              </Box>
-            </Card>
-          </Grid.Cell>
-
-          <Grid.Cell>
-            <Card>
-              <Box padding="400">
-                <Text as="h3" variant="headingMd">Pickup radius</Text>
-                <Box paddingBlockStart="300">
-                  <SimpleUSHeatMap />
-                </Box>
-                <Box paddingBlockStart="200">
-                  <InlineStack align="space-between" blockAlign="center">
-                    <Text tone="subdued">Settings</Text>
-                    <Button url="/settings" plain>Validation rules</Button>
-                  </InlineStack>
-                </Box>
-              </Box>
-            </Card>
-          </Grid.Cell>
-        </Grid>
-      </Box>
-
-      {/* Top problem tables + export */}
-      <Box paddingBlockStart="400">
-        <Grid columns={{ sm: 1, md: 2, lg: 2 }} gap="400">
+        <Grid columns={{ sm: 1, md: 3, lg: 3 }} gap="400">
+          {/* Left: Top problem ZIP codes */}
           <Grid.Cell>
             <Card>
               <Box padding="400">
                 <InlineStack align="space-between" blockAlign="center">
                   <Text as="h3" variant="headingMd">Top problem ZIP codes</Text>
+                  <Text as="span" variant="bodySm" tone="subdued">Address</Text>
+                </InlineStack>
+                <Box paddingBlockStart="300">
+                  <BlockStack gap="200">
+                    {(problems.topByZip || []).slice(0, 5).map((r, index) => {
+                      // Extract just the ZIP code part if it has country prefix
+                      const zipDisplay = r.key ? r.key.split('-').pop() : `ZIP ${index + 1}`;
+                      return (
+                        <InlineStack key={r.key || index} align="space-between">
+                          <Text as="p">{zipDisplay}</Text>
+                          <Text as="p">{(r.total || 0).toLocaleString()}</Text>
+                        </InlineStack>
+                      );
+                    })}
+                  </BlockStack>
+                </Box>
+                <Box paddingBlockStart="400">
                   <Button
+                    size="slim"
                     onClick={async () => {
                       try {
                         const url = `/admin/logs.csv?range=${range}&segment=${segment}`;
@@ -344,14 +308,26 @@ export default function AnalyticsDashboard() {
                       }
                     }}
                   >
-                    Export logs CSV
+                    Export logs o CSV
                   </Button>
+                </Box>
+              </Box>
+            </Card>
+          </Grid.Cell>
+
+          {/* Middle: Top problem cities */}
+          <Grid.Cell>
+            <Card>
+              <Box padding="400">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="h3" variant="headingMd">Top problem cities</Text>
+                  <Text as="span" variant="bodySm" tone="subdued">Amount</Text>
                 </InlineStack>
-                <Box paddingBlockStart="200">
-                  <BlockStack gap="100">
-                    {(problems.topByZip || []).slice(0, 5).map((r) => (
-                      <InlineStack key={r.key} align="space-between">
-                        <Text as="p">{r.key}</Text>
+                <Box paddingBlockStart="300">
+                  <BlockStack gap="200">
+                    {(problems.topByCity || []).slice(0, 5).map((r, index) => (
+                      <InlineStack key={r.key || index} align="space-between">
+                        <Text as="p">{r.key || `City ${index + 1}`}</Text>
                         <Text as="p">{(r.total || 0).toLocaleString()}</Text>
                       </InlineStack>
                     ))}
@@ -360,27 +336,110 @@ export default function AnalyticsDashboard() {
               </Box>
             </Card>
           </Grid.Cell>
+
+          {/* Right: Insights + Pickup radius */}
           <Grid.Cell>
-            <Card>
-              <Box padding="400">
-                <Text as="h3" variant="headingMd">Top problem cities</Text>
-                <Box paddingBlockStart="200">
-                  <BlockStack gap="100">
-                    {(problems.topByCity || []).slice(0, 5).map((r) => (
-                      <InlineStack key={r.key} align="space-between">
-                        <Text as="p">{r.key}</Text>
-                        <Text as="p">{(r.total || 0).toLocaleString()}</Text>
-                      </InlineStack>
-                    ))}
-                  </BlockStack>
+            <BlockStack gap="400">
+              {/* Insights Card */}
+              <Card>
+                <Box padding="400">
+                  <Text as="h3" variant="headingMd">Insights</Text>
+                  <Box paddingBlockStart="300">
+                    <BlockStack gap="300">
+                      <BlockStack gap="150">
+                        <InlineStack blockAlign="center" gap="200">
+                          <input
+                            type="checkbox"
+                            role="switch"
+                            aria-label="Enable PO Box blocking"
+                            checked={poBoxBlock}
+                            onChange={(e) => setPoBoxBlock(e.target.checked)}
+                            style={{ 
+                              width: '40px', 
+                              height: '20px', 
+                              borderRadius: '10px',
+                              appearance: 'none',
+                              backgroundColor: poBoxBlock ? '#00A047' : '#DDD',
+                              position: 'relative',
+                              cursor: 'pointer'
+                            }}
+                          />
+                          <Text as="p" variant="bodyMd">Enable PO Box blocking</Text>
+                        </InlineStack>
+                        <Text tone="subdued">{pctPoBox}% of addresses in the last 30 days were PO Boxes.</Text>
+                      </BlockStack>
+
+                      <BlockStack gap="150">
+                        <InlineStack blockAlign="center" gap="200">
+                          <input
+                            type="checkbox"
+                            role="switch"
+                            aria-label="Enforce complete addresses"
+                            checked={enforceUnit}
+                            onChange={(e) => setEnforceUnit(e.target.checked)}
+                            style={{ 
+                              width: '40px', 
+                              height: '20px', 
+                              borderRadius: '10px',
+                              appearance: 'none',
+                              backgroundColor: enforceUnit ? '#00A047' : '#DDD',
+                              position: 'relative',
+                              cursor: 'pointer'
+                            }}
+                          />
+                          <Text as="p" variant="bodyMd">Enforce complete addresses</Text>
+                        </InlineStack>
+                        <Text tone="subdued">{pctMissingUnit}% of validations are missing apartment numbers.</Text>
+                      </BlockStack>
+
+                      <BlockStack gap="150">
+                        <InlineStack blockAlign="center" gap="200">
+                          <input
+                            type="checkbox"
+                            role="switch"
+                            aria-label="Auto-apply corrections"
+                            checked={autoApply}
+                            onChange={(e) => setAutoApply(e.target.checked)}
+                            style={{ 
+                              width: '40px', 
+                              height: '20px', 
+                              borderRadius: '10px',
+                              appearance: 'none',
+                              backgroundColor: autoApply ? '#00A047' : '#DDD',
+                              position: 'relative',
+                              cursor: 'pointer'
+                            }}
+                          />
+                          <Text as="p" variant="bodyMd">Auto-apply corrections</Text>
+                        </InlineStack>
+                        <Text tone="subdued">Automatically adjust corrections when possible</Text>
+                      </BlockStack>
+                    </BlockStack>
+                  </Box>
                 </Box>
-              </Box>
-            </Card>
+              </Card>
+
+              {/* Pickup radius Card */}
+              <Card>
+                <Box padding="400">
+                  <Text as="h3" variant="headingMd">Pickup radius</Text>
+                  <Box paddingBlockStart="300">
+                    <CircularPickupRadiusViz />
+                  </Box>
+                  <Box paddingBlockStart="200">
+                    <InlineStack align="space-between" blockAlign="center">
+                      <Text tone="subdued">Settings</Text>
+                      <Button url="/settings" plain>Validation rules</Button>
+                    </InlineStack>
+                  </Box>
+                </Box>
+              </Card>
+            </BlockStack>
           </Grid.Cell>
         </Grid>
       </Box>
 
-      
-    </Page>
+      </Page>
+    </Box>
   );
 }
