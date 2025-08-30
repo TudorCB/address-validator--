@@ -3,5 +3,5 @@ type = "ui_extension"
 surface = "customer-account"
 api_version = "2025-01"
 extension_points = [
-  { target = "customer-account.profile.addresses.render-after", module = "src/index.jsx" }
+  { target = "customer-account.profile.addresses.render-after", module = "./src/index.jsx" }
 ]
