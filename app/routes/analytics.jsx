@@ -1,20 +1,26 @@
-import React from "react";
 import { json } from "@remix-run/node";
-import { Link } from "@remix-run/react";
-import { Page, Layout, Card, Text, Button, Select, InlineStack } from "@shopify/polaris";
+import { Page, Layout, Card, Text, Button, Select, InlineStack, Tooltip } from "@shopify/polaris";
+import { useNavigate } from "@remix-run/react";
 import AppFrame from "../components/AppFrame.jsx";
+import React from "react";
 import ClientOnly from "../components/ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("../components/StackedAreaChart.client.jsx"));
 
 export const loader = async () => json({});
 
-function Kpi({ title, value, subtle }) {
+function Kpi({ title, value, help }) {
   return (
     <Card>
       <div style={{ padding: 16 }}>
-        <Text as="h3" variant="headingMd">{title}</Text>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Text as="h3" variant="headingMd">{title}</Text>
+          {help ? (
+            <Tooltip content={help}>
+              <span style={{ cursor: "help", color: "#616161" }}>?</span>
+            </Tooltip>
+          ) : null}
+        </div>
         <div style={{ fontSize: 28, fontWeight: 600, marginTop: 6 }}>{value}</div>
-        {subtle ? <div style={{ color: "#616161", marginTop: 4 }}>{subtle}</div> : null}
       </div>
     </Card>
   );
@@ -22,7 +28,8 @@ function Kpi({ title, value, subtle }) {
 
 function InsightCard({ insight, onQuickToggle }) {
   const levelColor = insight.severity === "high" ? "#D82C0D" : insight.severity === "medium" ? "#8A6116" : "#006FBB";
-  const quick = insight.quickToggle;
+  const quick = insight.quickToggle; // { label, patch } optional
+
   return (
     <Card>
       <div style={{ padding: 16 }}>
@@ -30,9 +37,9 @@ function InsightCard({ insight, onQuickToggle }) {
         <div style={{ marginTop: 6, color: levelColor, fontWeight: 600, fontSize: 12, letterSpacing: .3, textTransform: "uppercase" }}>
           {insight.severity} priority
         </div>
-        <div style={{ marginTop: 8, color: "#434343" }}>{insight.body}</div>
-        <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-          <Link to={insight.cta.href}><Button primary>{insight.cta.label}</Button></Link>
+        <div style={{ marginTop: 8, color: "#434343", lineHeight: 1.5 }}>{insight.body}</div>
+        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href={insight.cta.href}><Button primary>{insight.cta.label}</Button></a>
           {quick ? <Button onClick={() => onQuickToggle(quick.patch)}>{quick.label}</Button> : null}
         </div>
       </div>
@@ -81,6 +88,7 @@ function ProblemsTable({ title, rows }) {
 }
 
 export default function AnalyticsPage() {
+  const navigate = useNavigate();
   const [range, setRange] = React.useState("7d");
   const [segment, setSegment] = React.useState("all");
   const [summary, setSummary] = React.useState(null);
@@ -88,15 +96,16 @@ export default function AnalyticsPage() {
   const [problems, setProblems] = React.useState({ topByZip: [], topByCity: [] });
 
   async function fetchAll() {
-    const headers = { authorization: "Bearer dev.stub.jwt" };
-    const s = await fetch(`/api/analytics/summary?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
-    const i = await fetch(`/api/analytics/recommendations?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
-    const p = await fetch(`/api/analytics/top-problems?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
+    const headers = { authorization: "Bearer dev.stub.jwt" }; // TODO: replace with real session token
+    const s = await fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then(r => r.json());
+    const i = await fetch(`/api/analytics.recommendations?range=${range}&segment=${segment}`, { headers }).then(r => r.json());
+    const p = await fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then(r => r.json());
 
-    const enriched = (i?.insights || []).map((ins) => {
+    // attach quick toggles
+    const enriched = (i?.insights || []).map(ins => {
       if (ins.id === "po-box-policy") return { ...ins, quickToggle: { label: "Enable PO Box block", patch: { blockPoBoxes: true } } };
       if (ins.id === "auto-apply-corrections") return { ...ins, quickToggle: { label: "Enable Auto-apply", patch: { autoApplyCorrections: true } } };
-      if (ins.id === "missing-unit-helper") return { ...ins, quickToggle: { label: "Soft mode OFF (enforce)", patch: { softMode: false } } };
+      if (ins.id === "missing-unit-helper") return { ...ins, quickToggle: { label: "Turn OFF Soft Mode", patch: { softMode: false } } };
       return ins;
     });
 
@@ -105,13 +114,10 @@ export default function AnalyticsPage() {
     setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
   }
 
-  React.useEffect(() => {
-    fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, segment]);
+  React.useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, [range, segment]);
 
   const k = summary?.kpis || {};
-  const trend = (summary?.trends || []).map((d) => ({
+  const trend = (summary?.trends || []).map(d => ({
     name: d.day,
     values: [
       { key: "OK", value: d.ok || 0 },
@@ -122,7 +128,7 @@ export default function AnalyticsPage() {
 
   async function quickToggle(patch) {
     try {
-      const res = await fetch("/api/settings/update", {
+      const res = await fetch("/api/settings.update", {
         method: "PATCH",
         headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
         body: JSON.stringify(patch),
@@ -132,20 +138,21 @@ export default function AnalyticsPage() {
       alert("Setting updated.");
     } catch (e) {
       console.error(e);
-      alert("Could not update setting. Check console.");
+      alert("Could not update setting. See console.");
     }
   }
 
   return (
     <AppFrame>
       <Page
-        title="Analytics & Insights"
+        title="Insights & Solutions"
+        subtitle="Actionable guidance to improve deliverability and reduce costs."
         primaryAction={{
           content: "Export CSV",
           onAction: async () => {
             try {
-              const token = "dev.stub.jwt";
-              const url = `/admin/logs/csv?range=${range}&segment=${segment}`;
+              const token = "dev.stub.jwt"; // TODO: replace with real token
+              const url = `/admin/logs.csv?range=${range}&segment=${segment}`;
               const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
               if (!res.ok) throw new Error(`Export failed: ${res.status}`);
               const blob = await res.blob();
@@ -161,11 +168,11 @@ export default function AnalyticsPage() {
               console.error(e);
               alert("CSV export failed.");
             }
-          },
+          }
         }}
         secondaryActions={[
-          { content: "View Logs", url: "/admin/logs" },
-          { content: "Change Rules", url: "/settings" },
+          { content: "View Logs", onAction: () => navigate("/admin/logs") },
+          { content: "Change Rules", onAction: () => navigate("/settings") }
         ]}
       >
         <Layout>
@@ -173,31 +180,50 @@ export default function AnalyticsPage() {
             <Card>
               <div style={{ padding: 12 }}>
                 <InlineStack gap="400" wrap={false}>
-                  <Select label="Range" options={[{ label: "7 days", value: "7d" }, { label: "14 days", value: "14d" }, { label: "30 days", value: "30d" }]} value={range} onChange={setRange} />
-                  <Select label="Segment" options={[{ label: "All", value: "all" }, { label: "Checkout", value: "checkout" }, { label: "Thank-you", value: "thank_you" }, { label: "Customer", value: "customer_account" }]} value={segment} onChange={setSegment} />
+                  <Select
+                    label="Range"
+                    options={[
+                      {label:"7 days",value:"7d"},
+                      {label:"14 days",value:"14d"},
+                      {label:"30 days",value:"30d"}
+                    ]}
+                    value={range}
+                    onChange={setRange}
+                  />
+                  <Select
+                    label="Segment"
+                    options={[
+                      {label:"All",value:"all"},
+                      {label:"Checkout",value:"checkout"},
+                      {label:"Thank-you",value:"thank_you"},
+                      {label:"Customer",value:"customer_account"}
+                    ]}
+                    value={segment}
+                    onChange={setSegment}
+                  />
                 </InlineStack>
               </div>
             </Card>
           </Layout.Section>
 
           <Layout.Section oneThird>
-            <Kpi title="Total validations" value={k.totalValidations ?? 0} subtle="All sources" />
+            <Kpi title="Total validations" value={k.totalValidations ?? 0} help="All address checks across sources." />
           </Layout.Section>
           <Layout.Section oneThird>
-            <Kpi title="Deliverable (OK)" value={k.deliverableOk ?? 0} subtle="Passed immediately" />
+            <Kpi title="Deliverable (OK)" value={k.deliverableOk ?? 0} help="Passed without intervention." />
           </Layout.Section>
           <Layout.Section oneThird>
-            <Kpi title="Corrected" value={k.corrected ?? 0} subtle="Normalized & applied" />
+            <Kpi title="Corrected" value={k.corrected ?? 0} help="Normalized to carrier-friendly format." />
           </Layout.Section>
 
           <Layout.Section oneThird>
-            <Kpi title="Blocked" value={k.blocked ?? 0} subtle="Hard gates" />
+            <Kpi title="Blocked" value={k.blocked ?? 0} help="Hard gates (e.g., missing unit, PO box)." />
           </Layout.Section>
           <Layout.Section oneThird>
-            <Kpi title="Suggest pickup" value={k.suggestPickup ?? 0} subtle="Saved sales via pickup" />
+            <Kpi title="Suggest pickup" value={k.suggestPickup ?? 0} help="Saved sales via pickup suggestion." />
           </Layout.Section>
           <Layout.Section oneThird>
-            <Kpi title="Est. savings" value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} subtle="Avoided failed deliveries" />
+            <Kpi title="Est. savings" value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} help="Rough savings from prevented failed deliveries." />
           </Layout.Section>
 
           <Layout.Section>
@@ -206,8 +232,13 @@ export default function AnalyticsPage() {
                 <Text as="h3" variant="headingMd">Validation trend</Text>
                 <div style={{ height: 280, marginTop: 16 }}>
                   <ClientOnly>
-                    <React.Suspense fallback={<div style={{ color: "#616161" }}>Loading chart…</div>}>
-                      <StackedAreaChartClient isAnimated data={trend} theme="Default" xAxisOptions={{ labelFormatter: (v) => v?.slice(5) }} />
+                    <React.Suspense fallback={<div style={{ color: "#616161" }}>Loading chart...</div>}>
+                      <StackedAreaChartClient
+                        isAnimated
+                        data={trend}
+                        theme="Default"
+                        xAxisOptions={{ labelFormatter: (v) => v?.slice(5) }}
+                      />
                     </React.Suspense>
                   </ClientOnly>
                 </div>
@@ -220,25 +251,23 @@ export default function AnalyticsPage() {
               <div style={{ padding: 16 }}>
                 <Text as="h3" variant="headingMd">Actionable insights</Text>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12, marginTop: 12 }}>
-                  {insights.length === 0 ? (
-                    <div style={{ color: "#616161" }}>No insights yet — come back after more traffic.</div>
-                  ) : (
-                    insights.map((i) => <InsightCard key={i.id} insight={i} onQuickToggle={quickToggle} />)
-                  )}
+                  {insights.length === 0
+                    ? <div style={{ color:"#616161" }}>No insights yet - come back after more traffic.</div>
+                  : insights.map(i => <InsightCard key={i.id} insight={i} onQuickToggle={quickToggle} />)
+                  }
                 </div>
               </div>
             </Card>
           </Layout.Section>
 
           <Layout.Section>
-            <ProblemsTable title="Top problem areas — by ZIP" rows={problems.topByZip} />
+            <ProblemsTable title="Top problem areas - by ZIP" rows={problems.topByZip} />
           </Layout.Section>
           <Layout.Section>
-            <ProblemsTable title="Top problem areas — by City" rows={problems.topByCity} />
+            <ProblemsTable title="Top problem areas - by City" rows={problems.topByCity} />
           </Layout.Section>
         </Layout>
       </Page>
     </AppFrame>
   );
 }
-

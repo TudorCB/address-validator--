@@ -95,8 +95,8 @@ export default function AnalyticsDashboard() {
 
   async function fetchData() {
     const headers = { authorization: `Bearer ${token}` };
-    const s = await fetch(`/api/analytics/summary?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
-    const p = await fetch(`/api/analytics/top-problems?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
+    const s = await fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
+    const p = await fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
     setSummary(s);
     setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
   }
@@ -117,7 +117,7 @@ export default function AnalyticsDashboard() {
   async function applySettings() {
     try {
       const patch = { blockPoBoxes: poBoxBlock, softMode: !enforceUnit };
-      const res = await fetch(`/api/settings/update`, {
+      const res = await fetch(`/api/settings.update`, {
         method: "PATCH",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify(patch),
@@ -232,7 +232,7 @@ export default function AnalyticsDashboard() {
             <Text as="h3" variant="headingMd">Validation Trends</Text>
             <Box paddingBlockStart="300">
               <ClientOnly>
-                <React.Suspense fallback={<Text tone="subdued">Loading chart…</Text>}>
+                <React.Suspense fallback={<Text tone="subdued">Loading chart...</Text>}>
                   <StackedAreaChartClient
                     isAnimated
                     data={trendData}
@@ -355,7 +355,7 @@ export default function AnalyticsDashboard() {
                 <Button
                   onClick={async () => {
                     try {
-                      const url = `/admin/logs/csv?range=${range}&segment=${segment}`;
+                      const url = `/admin/logs.csv?range=${range}&segment=${segment}`;
                       const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
                       if (!res.ok) throw new Error(`Export failed: ${res.status}`);
                       const blob = await res.blob();
@@ -398,7 +398,7 @@ export default function AnalyticsDashboard() {
                       { label: "Source (Checkout, Thank-you, Account)", value: "all" },
                       { label: "Checkout", value: "checkout" },
                       { label: "Thank-you", value: "thank_you" },
-                      { label: "Account", value: "account" },
+                      { label: "Account", value: "customer_account" },
                     ]}
                     value={segment}
                     onChange={setSegment}
@@ -415,7 +415,7 @@ export default function AnalyticsDashboard() {
 
               <Box paddingBlockStart="300">
                 {logs.loading ? (
-                  <Text tone="subdued">Loading logs…</Text>
+                  <Text tone="subdued">Loading logs...</Text>
                 ) : (
                   <DataTable
                     columnContentTypes={["text", "text", "text", "text", "text"]}
