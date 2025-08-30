@@ -1,0 +1,8 @@
+name = "Address Validator++ Customer Address"
+type = "customer_account_extension"
+api_version = "2025-01"
+
+extension_points = [
+  "CustomerAccount::Addresses::Render"
+]
+

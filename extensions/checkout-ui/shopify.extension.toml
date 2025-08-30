@@ -1,0 +1,9 @@
+name = "Address Validator++ Checkout UI"
+type = "checkout_ui_extension"
+api_version = "2025-01"
+
+# Extension points this UI extension targets
+extension_points = [
+  "Checkout::Dynamic::Render"
+]
+
