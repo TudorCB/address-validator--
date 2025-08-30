@@ -2,7 +2,7 @@
 
 client_id = "5157c62e833750cbbe886fa1f9995997"
 name = "address-validator++"
-application_url = "https://obvious-montreal-alice-yamaha.trycloudflare.com"
+application_url = "https://balance-textile-garcia-newman.trycloudflare.com"
 embedded = true
 handle = "address-validator-36"
 
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "read_checkouts,read_customers,write_customers,read_orders"
 
 [auth]
-redirect_urls = ["https://obvious-montreal-alice-yamaha.trycloudflare.com/auth/callback", "https://obvious-montreal-alice-yamaha.trycloudflare.com/auth/shopify/callback", "https://obvious-montreal-alice-yamaha.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://balance-textile-garcia-newman.trycloudflare.com/auth/callback", "https://balance-textile-garcia-newman.trycloudflare.com/auth/shopify/callback", "https://balance-textile-garcia-newman.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

@@ -7,11 +7,8 @@ import {
   InlineStack,
   Button,
   Select,
-  TextField,
-  DataTable,
   Box,
   Divider,
-  Bleed,
   BlockStack,
   Badge,
 } from "@shopify/polaris";
@@ -69,15 +66,15 @@ export default function AnalyticsDashboard() {
   // Filters and local UI state
   const [range, setRange] = React.useState("30d");
   const [segment, setSegment] = React.useState("all");
-  const [search, setSearch] = React.useState("");
   const [poBoxBlock, setPoBoxBlock] = React.useState(true);
   const [enforceUnit, setEnforceUnit] = React.useState(false); // maps to softMode=false
+  const [autoApply, setAutoApply] = React.useState(false);
 
   // Data state (live from API)
   const [summary, setSummary] = React.useState(null);
   const [problems, setProblems] = React.useState({ topByZip: [], topByCity: [] });
   const [settingsLoaded, setSettingsLoaded] = React.useState(false);
-  const [logs, setLogs] = React.useState({ rows: [], loading: false });
+  
 
   const token = "dev.stub.jwt"; // accepted by session-verify in dev
 
@@ -108,6 +105,7 @@ export default function AnalyticsDashboard() {
       const st = body?.settings || {};
       setPoBoxBlock(!!st.blockPoBoxes);
       setEnforceUnit(!st.softMode);
+      setAutoApply(!!st.autoApplyCorrections);
       setSettingsLoaded(true);
     } catch (e) {
       console.error("settings load failed", e);
@@ -116,7 +114,7 @@ export default function AnalyticsDashboard() {
 
   async function applySettings() {
     try {
-      const patch = { blockPoBoxes: poBoxBlock, softMode: !enforceUnit };
+      const patch = { blockPoBoxes: poBoxBlock, softMode: !enforceUnit, autoApplyCorrections: !!autoApply };
       const res = await fetch(`/api/settings.update`, {
         method: "PATCH",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
@@ -130,24 +128,8 @@ export default function AnalyticsDashboard() {
 
   React.useEffect(() => {
     fetchData().catch((e) => console.error(e));
-    // Logs
-    (async () => {
-      try {
-        setLogs((s) => ({ ...s, loading: true }));
-        const url = new URL(`/api/logs`, window.location.origin);
-        url.searchParams.set("range", range);
-        url.searchParams.set("segment", segment);
-        if (search) url.searchParams.set("q", search);
-        const res = await fetch(url.toString(), { headers: { authorization: `Bearer ${token}` } });
-        const body = await res.json();
-        setLogs({ rows: body?.rows || [], loading: false });
-      } catch (e) {
-        console.error(e);
-        setLogs({ rows: [], loading: false });
-      }
-    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, segment, search]);
+  }, [range, segment]);
 
   React.useEffect(() => {
     if (!settingsLoaded) fetchSettings();
@@ -155,18 +137,16 @@ export default function AnalyticsDashboard() {
   }, []);
 
   const k = summary?.kpis || {};
+  const total = k.totalValidations || 0;
+  const pct = (n) => (total > 0 ? Math.round((n * 1000) / total) / 10 : 0);
+  const pctPoBox = pct(k?.causes?.blockedPoBox || 0);
+  const pctMissingUnit = pct(k?.causes?.blockedMissingUnit || 0);
+  const pctCorrected = pct(k?.corrected || 0);
 
-  // Placeholder table rows (can be wired later)
-  const tableRows = logs.rows.map((r) => [
-    new Date(r.ts || Date.now()).toLocaleString(),
-    r.orderId || "",
-    r.source || "",
-    r.action || "",
-    r.status || "",
-  ]);
+  // no logs table on the simplified dashboard
 
   return (
-    <Page title="Address Validator++: Analytics & Insights" subtitle="Better Deliveries, Lower Costs, Happier Customers">
+    <Page title="Address validation Analytics" subtitle="To provide actionable insights & Solutions">
       {/* Filters */}
       <Box paddingBlockEnd="300">
         <Card>
@@ -259,62 +239,57 @@ export default function AnalyticsDashboard() {
           <Grid.Cell>
             <Card>
               <Box padding="400">
-                <InlineStack align="space-between" blockAlign="center">
-                  <Text as="h3" variant="headingMd">Actionable Insights</Text>
-                  <InlineStack gap="200">
-                    <InlineStack blockAlign="center" gap="150">
-                      <Text as="span" tone="subdued">Enforce Unit/Apt #</Text>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        aria-label="Enforce Unit/Apt #"
-                        checked={enforceUnit}
-                        onChange={(e) => setEnforceUnit(e.target.checked)}
-                      />
-                    </InlineStack>
-                  </InlineStack>
-                </InlineStack>
-
+                <Text as="h3" variant="headingMd">Insights</Text>
                 <Box paddingBlockStart="300">
                   <BlockStack gap="300">
-                    <InlineStack align="space-between" blockAlign="center">
-                      <BlockStack gap="100">
-                        <InlineStack blockAlign="center" gap="200">
-                          <input
-                            type="checkbox"
-                            role="switch"
-                            aria-label="Enable PO Box Blocking"
-                            checked={poBoxBlock}
-                            onChange={(e) => setPoBoxBlock(e.target.checked)}
-                          />
-                          <Text as="p" variant="bodyMd">Enable PO Box Blocking</Text>
-                        </InlineStack>
-                        <Text tone="subdued">Automatically prevent to PO Boxes. Reduce missing address details.</Text>
-                      </BlockStack>
-                    </InlineStack>
+                    <BlockStack gap="100">
+                      <InlineStack blockAlign="center" gap="200">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          aria-label="Enable PO Box blocking"
+                          checked={poBoxBlock}
+                          onChange={(e) => setPoBoxBlock(e.target.checked)}
+                        />
+                        <Text as="p" variant="bodyMd">Enable PO Box blocking</Text>
+                      </InlineStack>
+                      <Text tone="subdued">{pctPoBox}% of addresses in the last {range} were PO Boxes.</Text>
+                    </BlockStack>
 
                     <Divider />
 
-                    <InlineStack align="space-between" blockAlign="center">
-                      <BlockStack gap="100">
-                        <InlineStack blockAlign="center" gap="200">
-                          <input
-                            type="checkbox"
-                            role="switch"
-                            aria-label="Enforce Unit/Apt #"
-                            checked={enforceUnit}
-                            onChange={(e) => setEnforceUnit(e.target.checked)}
-                          />
-                          <Text as="p" variant="bodyMd">Enforce Unit/Apt #</Text>
-                        </InlineStack>
-                        <Text tone="subdued">Require unit or apartment numbers where applicable.</Text>
-                      </BlockStack>
-                    </InlineStack>
+                    <BlockStack gap="100">
+                      <InlineStack blockAlign="center" gap="200">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          aria-label="Enforce complete addresses"
+                          checked={enforceUnit}
+                          onChange={(e) => setEnforceUnit(e.target.checked)}
+                        />
+                        <Text as="p" variant="bodyMd">Enforce complete addresses</Text>
+                      </InlineStack>
+                      <Text tone="subdued">{pctMissingUnit}% of validations are missing apartment numbers.</Text>
+                    </BlockStack>
+
+                    <Divider />
+
+                    <BlockStack gap="100">
+                      <InlineStack blockAlign="center" gap="200">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          aria-label="Auto-apply corrections"
+                          checked={autoApply}
+                          onChange={(e) => setAutoApply(e.target.checked)}
+                        />
+                        <Text as="p" variant="bodyMd">Auto-apply corrections</Text>
+                      </InlineStack>
+                      <Text tone="subdued">Automatically adjust corrections where possible ({pctCorrected}% corrected).</Text>
+                    </BlockStack>
 
                     <Box paddingBlockStart="300">
-                      <Button variant="primary" onClick={applySettings}>
-                        Apply All Changes
-                      </Button>
+                      <Button variant="primary" onClick={applySettings}>Apply All Changes</Button>
                     </Box>
                   </BlockStack>
                 </Box>
@@ -325,109 +300,87 @@ export default function AnalyticsDashboard() {
           <Grid.Cell>
             <Card>
               <Box padding="400">
-                <Text as="h3" variant="headingMd">Top Problem ZIPs/Cities</Text>
+                <Text as="h3" variant="headingMd">Pickup radius</Text>
                 <Box paddingBlockStart="300">
                   <SimpleUSHeatMap />
                 </Box>
                 <Box paddingBlockStart="200">
+                  <InlineStack align="space-between" blockAlign="center">
+                    <Text tone="subdued">Settings</Text>
+                    <Button url="/settings" plain>Validation rules</Button>
+                  </InlineStack>
+                </Box>
+              </Box>
+            </Card>
+          </Grid.Cell>
+        </Grid>
+      </Box>
+
+      {/* Top problem tables + export */}
+      <Box paddingBlockStart="400">
+        <Grid columns={{ sm: 1, md: 2, lg: 2 }} gap="400">
+          <Grid.Cell>
+            <Card>
+              <Box padding="400">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="h3" variant="headingMd">Top problem ZIP codes</Text>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const url = `/admin/logs.csv?range=${range}&segment=${segment}`;
+                        const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+                        if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+                        const blob = await res.blob();
+                        const href = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = href;
+                        a.download = `address-validator-logs-${range}-${segment}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(href);
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }}
+                  >
+                    Export logs CSV
+                  </Button>
+                </InlineStack>
+                <Box paddingBlockStart="200">
                   <BlockStack gap="100">
-                    {(problems.topByZip || []).slice(0, 5).map((r, idx) => (
-                      <Text as="p" key={r.key}>{`${idx + 1}. ${r.key} - ${r.total}`}</Text>
+                    {(problems.topByZip || []).slice(0, 5).map((r) => (
+                      <InlineStack key={r.key} align="space-between">
+                        <Text as="p">{r.key}</Text>
+                        <Text as="p">{(r.total || 0).toLocaleString()}</Text>
+                      </InlineStack>
                     ))}
                   </BlockStack>
                 </Box>
-              <Box paddingBlockStart="300">
-                <Button>View Full Report</Button>
               </Box>
-            </Box>
-          </Card>
-        </Grid.Cell>
-      </Grid>
+            </Card>
+          </Grid.Cell>
+          <Grid.Cell>
+            <Card>
+              <Box padding="400">
+                <Text as="h3" variant="headingMd">Top problem cities</Text>
+                <Box paddingBlockStart="200">
+                  <BlockStack gap="100">
+                    {(problems.topByCity || []).slice(0, 5).map((r) => (
+                      <InlineStack key={r.key} align="space-between">
+                        <Text as="p">{r.key}</Text>
+                        <Text as="p">{(r.total || 0).toLocaleString()}</Text>
+                      </InlineStack>
+                    ))}
+                  </BlockStack>
+                </Box>
+              </Box>
+            </Card>
+          </Grid.Cell>
+        </Grid>
       </Box>
 
-      {/* Validation Log Viewer */}
-      <Box paddingBlockStart="400">
-        <Card>
-          <Bleed marginInline="400" marginBlock="0">
-            <Box padding="400">
-              <InlineStack align="space-between" blockAlign="center">
-                <Text as="h3" variant="headingMd">Validation Log Viewer</Text>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const url = `/admin/logs.csv?range=${range}&segment=${segment}`;
-                      const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
-                      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-                      const blob = await res.blob();
-                      const href = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = href;
-                      a.download = `address-validator-logs-${range}-${segment}.csv`;
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                      URL.revokeObjectURL(href);
-                    } catch (e) {
-                      console.error(e);
-                    }
-                  }}
-                >
-                  CSV Export
-                </Button>
-              </InlineStack>
-
-              <Box paddingBlockStart="300">
-                <InlineStack gap="300" wrap>
-                  <Button>Filter</Button>
-                  <Select
-                    label="Date Range"
-                    labelHidden
-                    options={[
-                      { label: "Last 7 days", value: "7d" },
-                      { label: "Last 14 days", value: "14d" },
-                      { label: "Last 30 days", value: "30d" },
-                      { label: "All", value: "all" },
-                    ]}
-                    value={range}
-                    onChange={setRange}
-                  />
-                  <Select
-                    label="Source"
-                    labelHidden
-                    options={[
-                      { label: "Source (Checkout, Thank-you, Account)", value: "all" },
-                      { label: "Checkout", value: "checkout" },
-                      { label: "Thank-you", value: "thank_you" },
-                      { label: "Account", value: "customer_account" },
-                    ]}
-                    value={segment}
-                    onChange={setSegment}
-                  />
-                  <TextField
-                    label="Search"
-                    labelHidden
-                    value={search}
-                    onChange={setSearch}
-                    placeholder="Search"
-                  />
-                </InlineStack>
-              </Box>
-
-              <Box paddingBlockStart="300">
-                {logs.loading ? (
-                  <Text tone="subdued">Loading logs...</Text>
-                ) : (
-                  <DataTable
-                    columnContentTypes={["text", "text", "text", "text", "text"]}
-                    headings={["Timestamp", "Order ID", "Source", "Action", "Status"]}
-                    rows={tableRows}
-                  />
-                )}
-              </Box>
-            </Box>
-          </Bleed>
-        </Card>
-      </Box>
+      
     </Page>
   );
 }

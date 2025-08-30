@@ -31,6 +31,8 @@ export async function loader({ request }) {
   const okCount = logs.filter((l) => l.action === "OK").length;
   const corrected = logs.filter((l) => l.action === "CORRECTED").length;
   const blocked = logs.filter((l) => String(l.action || "").startsWith("BLOCK_")).length;
+  const blockedPoBox = logs.filter((l) => l.action === "BLOCK_PO_BOX").length;
+  const blockedMissingUnit = logs.filter((l) => l.action === "BLOCK_MISSING_UNIT").length;
   const suggestPickup = logs.filter((l) => l.action === "SUGGEST_PICKUP").length;
   const unver = logs.filter((l) => l.action === "UNVERIFIED").length;
 
@@ -67,6 +69,10 @@ export async function loader({ request }) {
       deliverableOk: okCount,
       corrected,
       blocked,
+      causes: {
+        blockedPoBox,
+        blockedMissingUnit,
+      },
       suggestPickup,
       unver,
       estimatedSavings,

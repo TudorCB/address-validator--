@@ -34,8 +34,8 @@ export default function AppFrame({ children }) {
   const navItems = useMemo(() => ([
     {
       label: "Dashboard",
-      destination: "/",
-      selected: location.pathname === "/"
+      destination: "/index",
+      selected: location.pathname === "/" || location.pathname.startsWith("/index")
     },
     {
       label: "Settings",
