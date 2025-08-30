@@ -9,6 +9,8 @@ Visit the [`shopify.dev` documentation](https://shopify.dev/docs/api/shopify-app
 ## Project Docs
 
 - Acceptance checklist (v1): [docs/acceptance.md](docs/acceptance.md)
+- Roadmap (v1.1): [docs/roadmap-v1_1.md](docs/roadmap-v1_1.md)
+- Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ## Quick start
 
