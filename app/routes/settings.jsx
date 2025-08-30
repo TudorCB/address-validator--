@@ -1,11 +1,14 @@
+﻿import React from "react";
 import { json, redirect } from "@remix-run/node";
-import { useActionData, useLoaderData, Form, useSubmit, useFetcher } from "@remix-run/react";
-import { Page, Layout, Card, Text, TextField, Checkbox, Button, Banner, InlineStack } from "@shopify/polaris";
+import { useLoaderData, useActionData, Form } from "@remix-run/react";
+import { Page, Layout, Card, Text, TextField, Checkbox, Button, InlineStack, BlockStack, Box, ChoiceList, Banner } from "@shopify/polaris";
 import AppFrame from "../components/AppFrame.jsx";
 import { getSettings, updateSettings } from "../lib/settings.js";
 
-export const loader = async () => {
-  return json({ settings: getSettings() });
+export const loader = async ({ request }) => {
+  const url = new URL(request.url);
+  const saved = url.searchParams.get("saved") === "1";
+  return json({ settings: getSettings(), saved });
 };
 
 export const action = async ({ request }) => {
@@ -20,8 +23,12 @@ export const action = async ({ request }) => {
   const autoApplyCorrections = autoApplyCorrectionsStr === "on" || autoApplyCorrectionsStr === "true";
   const softMode = softModeStr === "on" || softModeStr === "true";
 
+  if (!Number.isFinite(radius) || radius < 0 || radius > 500) {
+    return json({ error: "Pickup Search Radius must be a number between 0 and 500." }, { status: 400 });
+  }
+
   updateSettings({
-    pickupRadiusKm: isNaN(radius) ? undefined : radius,
+    pickupRadiusKm: radius,
     blockPoBoxes,
     autoApplyCorrections,
     softMode,
@@ -31,169 +38,120 @@ export const action = async ({ request }) => {
 };
 
 export default function SettingsPage() {
-  const { settings } = useLoaderData();
+  const { settings, saved } = useLoaderData();
   const result = useActionData();
-  const fetcher = useFetcher();
 
-  // Local state via uncontrolled refs through Polaris TextField "defaultValue"
-  // We'll build a small payload on click.
-  function testRadius() {
-    const payload = {
-      // Customer test location (input values read from DOM for simplicity)
-      customerLocation: {
-        lat: parseFloat(document.getElementById("test-lat").value),
-        lng: parseFloat(document.getElementById("test-lng").value),
-      },
-      pickupLocations: [
-        {
-          name: document.getElementById("p1-name").value,
-          lat: parseFloat(document.getElementById("p1-lat").value),
-          lng: parseFloat(document.getElementById("p1-lng").value),
-        },
-        {
-          name: document.getElementById("p2-name").value,
-          lat: parseFloat(document.getElementById("p2-lat").value),
-          lng: parseFloat(document.getElementById("p2-lng").value),
-        },
-        {
-          name: document.getElementById("p3-name").value,
-          lat: parseFloat(document.getElementById("p3-lat").value),
-          lng: parseFloat(document.getElementById("p3-lng").value),
-        },
-      ],
-      // radiusKm omitted to use current app setting by default
-    };
+  const [blockPoBoxes, setBlockPoBoxes] = React.useState(!!settings.blockPoBoxes);
+  const [autoApplyCorrections, setAutoApplyCorrections] = React.useState(!!settings.autoApplyCorrections);
+  const [softMode, setSoftMode] = React.useState(!!settings.softMode);
+  const [pickupRadiusKm, setPickupRadiusKm] = React.useState(String(settings.pickupRadiusKm ?? 25));
 
-    fetcher.submit(
-      { _json: JSON.stringify(payload) },
-      { method: "post", action: "/api/pickup-distance-check", encType: "application/json" }
-    );
-  }
+  const enforceUnit = !softMode;
+  const handleModeChange = (sel) => setSoftMode((sel?.[0] || "hard") === "soft");
 
-  // Because fetcher with encType json isn't automatic, we hook submit manually:
-  // Provide a small wrapper so action sees JSON.
-  const originalSubmit = fetcher.submit;
-  fetcher.submit = (body, opts = {}) => {
-    if (opts?.encType === "application/json" && body && typeof body._json === "string") {
-      return fetch("/api/pickup-distance-check", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
-        body: body._json,
-      }).then(async (r) => {
-        const j = await r.json();
-        fetcher.data = j;
-        fetcher.state = "idle";
-        fetcher.type = "done";
-        // force re-render
-        document.dispatchEvent(new Event("visibilitychange"));
-      }).catch((e) => {
-        console.error(e);
-      });
-    }
-    return originalSubmit(body, opts);
-  };
-
-  const preview = fetcher.data;
-
-  const level =
-    preview?.status !== "ok" ? "critical"
-    : preview?.inRange ? "success"
-    : "warning";
+  const radiusNumber = Number(pickupRadiusKm);
+  const radiusError = !Number.isFinite(radiusNumber) || radiusNumber < 0 || radiusNumber > 500 ? "Must be between 0 and 500" : undefined;
 
   return (
     <AppFrame>
-      <Page title="Settings">
-        <Layout>
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 16 }}>
-                <Text as="h2" variant="headingMd">Validation Rules</Text>
-                <Form method="post">
-                  <div style={{ display: "grid", gap: 16, maxWidth: 520, marginTop: 16 }}>
-                    <TextField
-                      label="Pickup radius (km)"
-                      name="pickupRadiusKm"
-                      type="number"
-                      min={0}
-                      defaultValue={String(settings.pickupRadiusKm)}
-                      autoComplete="off"
-                    />
-                    <Checkbox
-                      label="Block PO Boxes for shipping"
-                      name="blockPoBoxes"
-                      defaultChecked={settings.blockPoBoxes}
-                    />
-                    <Checkbox
-                      label="Auto-apply suggested corrections at checkout"
-                      name="autoApplyCorrections"
-                      defaultChecked={settings.autoApplyCorrections}
-                    />
-                    <Checkbox
-                      label="Soft mode (never block checkout — warnings only)"
-                      name="softMode"
-                      defaultChecked={settings.softMode}
-                    />
-                    <div>
-                      <Button submit primary>Save</Button>
-                    </div>
-                  </div>
-                </Form>
-                {result?.error ? (
-                  <div style={{ marginTop: 12, color: "crimson" }}>{result.error}</div>
-                ) : null}
-              </div>
-            </Card>
-          </Layout.Section>
+      <Page title="Address Validator++: Settings" subtitle="Customize your address policies">
+        {saved ? (
+          <Box padding="300">
+            <Banner status="success" title="Settings saved" />
+          </Box>
+        ) : null}
+        <Form method="post">
+          <Layout>
+            {/* Validation Rules */}
+            <Layout.Section>
+              <Card>
+                <Box padding="400">
+                  <Text as="h3" variant="headingMd">Validation Rules</Text>
+                  <Box paddingBlockStart="300">
+                    <BlockStack gap="300">
+                      <InlineStack align="space-between" blockAlign="center">
+                        <BlockStack gap="100">
+                          <Checkbox label="Block PO Boxes" name="blockPoBoxes" checked={blockPoBoxes} onChange={setBlockPoBoxes} />
+                          <Text tone="subdued">Prevent shipping to PO Box addresses</Text>
+                        </BlockStack>
+                        <Checkbox label="Enforce Unit/Apt #" checked={enforceUnit} onChange={(v) => setSoftMode(!v)} />
+                      </InlineStack>
+                      <Text tone="subdued">Require unit/apartment for multiâ€‘unit buildings</Text>
+                    </BlockStack>
+                  </Box>
+                </Box>
+              </Card>
+            </Layout.Section>
 
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 16 }}>
-                <Text as="h2" variant="headingMd">Pickup Radius Gate — Preview</Text>
-                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, 1fr)", marginTop: 12 }}>
-                  <TextField label="Customer lat" id="test-lat" autoComplete="off" defaultValue="33.749" />
-                  <TextField label="Customer lng" id="test-lng" autoComplete="off" defaultValue="-84.388" />
-                  <div style={{ alignSelf: "end", color: " #616161" }}>Using app setting radius: <b>{settings.pickupRadiusKm} km</b></div>
-                </div>
+            {/* Pickup Location Suggestions */}
+            <Layout.Section>
+              <Card>
+                <Box padding="400">
+                  <Text as="h3" variant="headingMd">Pickup Location Suggestions</Text>
+                  <Box paddingBlockStart="300">
+                    <Text tone="subdued">Validation Mode</Text>
+                    <Box paddingBlockStart="200">
+                      <ChoiceList
+                        title="Validation Mode"
+                        titleHidden
+                        choices={[
+                          { label: "Hard Mode (Strict blocking at checkout)", value: "hard" },
+                          { label: "Soft (Warn and allow override)", value: "soft" },
+                        ]}
+                        selected={[softMode ? "soft" : "hard"]}
+                        onChange={handleModeChange}
+                        allowMultiple={false}
+                      />
+                    </Box>
+                  </Box>
+                </Box>
+              </Card>
+            </Layout.Section>
 
-                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, 1fr)", marginTop: 16 }}>
-                  <TextField label="Pickup #1 name" id="p1-name" autoComplete="off" defaultValue="Midtown" />
-                  <TextField label="Pickup #1 lat" id="p1-lat" autoComplete="off" defaultValue="33.760" />
-                  <TextField label="Pickup #1 lng" id="p1-lng" autoComplete="off" defaultValue="-84.390" />
-                </div>
-                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, 1fr)", marginTop: 8 }}>
-                  <TextField label="Pickup #2 name" id="p2-name" autoComplete="off" defaultValue="South" />
-                  <TextField label="Pickup #2 lat" id="p2-lat" autoComplete="off" defaultValue="33.700" />
-                  <TextField label="Pickup #2 lng" id="p2-lng" autoComplete="off" defaultValue="-84.400" />
-                </div>
-                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(3, 1fr)", marginTop: 8 }}>
-                  <TextField label="Pickup #3 name" id="p3-name" autoComplete="off" defaultValue="North" />
-                  <TextField label="Pickup #3 lat" id="p3-lat" autoComplete="off" defaultValue="33.820" />
-                  <TextField label="Pickup #3 lng" id="p3-lng" autoComplete="off" defaultValue="-84.380" />
-                </div>
-
-                <div style={{ marginTop: 16 }}>
-                  <InlineStack gap="400">
-                    <Button onClick={testRadius} primary>Test radius</Button>
-                  </InlineStack>
-                </div>
-
-                {preview ? (
-                  <div style={{ marginTop: 16 }}>
-                    <Banner status={level} title={preview.inRange ? "In range" : "Out of range"}>
-                      <div>
-                        <div>Nearest: <b>{preview?.nearest?.name || "—"}</b></div>
-                        <div>Distance: {typeof preview?.distanceKm === "number" ? `${preview.distanceKm.toFixed(2)} km` : "—"}</div>
-                        <div>Radius: {preview?.radiusKm} km</div>
-                        <div style={{ color: "#616161", marginTop: 6 }}>{preview?.message || ""}</div>
+            {/* Autoâ€‘Suggest Store Pickup */}
+            <Layout.Section>
+              <Card>
+                <Box padding="400">
+                  <Text as="h3" variant="headingMd">Autoâ€‘Suggest Store Pickup</Text>
+                  <Box paddingBlockStart="300">
+                    <InlineStack align="space-between" blockAlign="center">
+                      <BlockStack gap="100">
+                        <Checkbox label="Autoâ€‘Apply Corrections" name="autoApplyCorrections" checked={autoApplyCorrections} onChange={setAutoApplyCorrections} />
+                        <Text tone="subdued">Automatically fix common typos and formatting issues</Text>
+                      </BlockStack>
+                      <div style={{ minWidth: 260 }}>
+                        <TextField
+                          label="Pickup Search Radius (km)"
+                          name="pickupRadiusKm"
+                          type="number"
+                          min={0}
+                          value={pickupRadiusKm}
+                          onChange={setPickupRadiusKm}
+                          autoComplete="off"
+                          error={result?.error?.includes("Pickup Search Radius") ? result.error : radiusError}
+                        />
                       </div>
-                    </Banner>
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-          </Layout.Section>
-        </Layout>
+                    </InlineStack>
+                  </Box>
+                </Box>
+              </Card>
+            </Layout.Section>
+
+            {/* Save/Cancel */}
+            <Layout.Section>
+              <InlineStack gap="300">
+                <input type="hidden" name="softMode" value={softMode ? "on" : "false"} />
+                <Button submit variant="primary" disabled={!!radiusError}>Save Settings</Button>
+                <Button url="/index">Cancel</Button>
+              </InlineStack>
+            </Layout.Section>
+          </Layout>
+        </Form>
+        {result?.error ? (
+          <Box padding="300"><Banner status="critical" title={String(result.error)} /></Box>
+        ) : null}
       </Page>
     </AppFrame>
   );
 }
+
