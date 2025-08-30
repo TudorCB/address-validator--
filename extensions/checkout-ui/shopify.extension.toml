@@ -1,9 +1,12 @@
-name = "Address Validator++ Checkout UI"
+name = "Address Validator++  Checkout UI"
 type = "checkout_ui_extension"
 api_version = "2025-01"
-
-# Extension points this UI extension targets
 extension_points = [
-  "Checkout::Dynamic::Render"
+  "purchase.checkout.delivery-address.render",
+  "purchase.checkout.block.render"
 ]
+
+# Notes:
+# - The extension will call our backend using a short-lived session token (getSessionToken) later.
+# - Do NOT include secrets in this bundle.
 

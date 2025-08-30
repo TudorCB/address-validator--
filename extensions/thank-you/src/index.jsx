@@ -1,18 +1,7 @@
-// TODO: expand logic later
-import React from "react";
-import ReactDOM from "react-dom";
-
-function App() {
-  return <div>Address Validator++ [Thank You]</div>;
+/**
+ * Thank You (order status) extension entry (stub).
+ */
+export default function ThankYouExtensionStub() {
+  return null; // TODO: show validation summary / pickup reminder
 }
-
-const containerId = "avpp-thank-you-root";
-let mountNode = document.getElementById(containerId);
-if (!mountNode) {
-  mountNode = document.createElement("div");
-  mountNode.id = containerId;
-  document.body.appendChild(mountNode);
-}
-
-ReactDOM.render(<App />, mountNode);
 

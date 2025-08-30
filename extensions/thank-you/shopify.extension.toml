@@ -1,8 +1,7 @@
-name = "Address Validator++ Thank You"
-type = "thank_you_page_extension"
+name = "Address Validator++  Thank You"
+type = "checkout_ui_extension"
 api_version = "2025-01"
-
 extension_points = [
-  "Checkout::ThankYou::Render"
+  "purchase.thank-you.block.render"
 ]
 

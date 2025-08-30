@@ -1,8 +1,7 @@
-name = "Address Validator++ Customer Address"
-type = "customer_account_extension"
+name = "Address Validator++  Customer Addresses"
+type = "customer_accounts_ui_extension"
 api_version = "2025-01"
-
 extension_points = [
-  "CustomerAccount::Addresses::Render"
+  "customer-account.profile.addresses.render-after"
 ]
 
