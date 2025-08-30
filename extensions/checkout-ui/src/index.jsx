@@ -10,12 +10,10 @@ import {
   useApi,
   useBuyerJourneyIntercept,
   useShippingAddress,
+  useApplyShippingAddressChange,
 } from "@shopify/ui-extensions-react/checkout";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-/**
- * Debounce hook
- */
 function useDebounced(value, delay = 700) {
   const [v, setV] = useState(value);
   useEffect(() => {
@@ -25,16 +23,10 @@ function useDebounced(value, delay = 700) {
   return v;
 }
 
-/**
- * Decide if progression should be blocked based on action enum
- */
 function isBlockingAction(action) {
   return action && String(action).startsWith("BLOCK_");
 }
 
-/**
- * Minimal View component
- */
 function View({ state, onAcceptSuggestion }) {
   if (state.loading) {
     return (
@@ -76,18 +68,15 @@ function View({ state, onAcceptSuggestion }) {
   );
 }
 
-/**
- * Main extension component (React runtime)
- */
 function CheckoutAddressValidator() {
   const api = useApi();
   const shipping = useShippingAddress();
+  const applyShippingAddressChange = useApplyShippingAddressChange();
 
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const mounted = useRef(true);
 
-  // Build a simple address object from current shipping form state.
   const addr = useMemo(() => ({
     address1: shipping?.address1 || "",
     address2: shipping?.address2 || "",
@@ -95,11 +84,14 @@ function CheckoutAddressValidator() {
     province: shipping?.provinceCode || shipping?.province || "",
     zip: shipping?.zip || "",
     country: shipping?.countryCode || shipping?.country || "US",
-  }), [shipping?.address1, shipping?.address2, shipping?.city, shipping?.province, shipping?.provinceCode, shipping?.zip, shipping?.country, shipping?.countryCode]);
+  }), [
+    shipping?.address1, shipping?.address2, shipping?.city,
+    shipping?.province, shipping?.provinceCode, shipping?.zip,
+    shipping?.country, shipping?.countryCode
+  ]);
 
   const debounced = useDebounced(addr, 700);
 
-  // Intercept progression when server says to block
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
     if (!response) return;
     const shouldBlock = isBlockingAction(response.action);
@@ -107,9 +99,7 @@ function CheckoutAddressValidator() {
       return {
         behavior: "block",
         reason: response.message || "Address issue",
-        perform: () => {
-          // no-op; just block
-        },
+        perform: () => {},
       };
     }
     return;
@@ -118,7 +108,7 @@ function CheckoutAddressValidator() {
   async function validateNow() {
     try {
       setLoading(true);
-      const token = await api.sessionToken.get(); // per Shopify docs
+      const token = await api.sessionToken.get();
       const res = await fetch("/api/validate-address", {
         method: "POST",
         headers: {
@@ -145,16 +135,41 @@ function CheckoutAddressValidator() {
     mounted.current = true;
     validateNow();
     return () => { mounted.current = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced.address1, debounced.city, debounced.zip, debounced.country]);
 
-  function acceptSuggestion() {
-    // NOTE: In a real build you'd write correctedAddress back into shipping fields if permitted
-    console.log("Accept corrected address (TODO wire to form writebacks)");
+  async function acceptSuggestion() {
+    try {
+      const corrected = response?.correctedAddress;
+      if (!corrected || !applyShippingAddressChange) return;
+
+      // Attempt to write the corrected fields into Shopify’s shipping form.
+      // NOTE: This overwrites current values; provide only fields you want changed.
+      await applyShippingAddressChange({
+        type: "updateShippingAddress",
+        address: {
+          address1: corrected.address1 || undefined,
+          address2: corrected.address2 || undefined,
+          city: corrected.city || undefined,
+          provinceCode: corrected.province || corrected.provinceCode || undefined,
+          postalCode: corrected.zip || undefined,
+          countryCode: corrected.country || undefined,
+        },
+      });
+
+      // Re-validate after writeback to refresh UI
+      await validateNow();
+    } catch (e) {
+      // Wallet flows and permission issues can throw.
+      console.error("[checkout-ui] applyShippingAddressChange failed", e);
+    }
   }
 
   return <View state={{ response, loading }} onAcceptSuggestion={acceptSuggestion} />;
 }
 
-// Register the extension for the shipping step extension points defined in TOML
-export default reactExtension("purchase.checkout.delivery-address.render", () => <CheckoutAddressValidator />);
+export default reactExtension(
+  "purchase.checkout.delivery-address.render",
+  () => <CheckoutAddressValidator />
+);
+

@@ -6,7 +6,8 @@ extension_points = [
   "purchase.checkout.block.render"
 ]
 
+capabilities = { block_progress = true, network_access = true }
+
 # Notes:
 # - The extension will call our backend using a short-lived session token (getSessionToken) later.
 # - Do NOT include secrets in this bundle.
-
