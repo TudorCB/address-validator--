@@ -1,12 +1,23 @@
 /**
- * Cache adapter (Redis stub).
+ * Cache adapter with in-memory fallback.
+ * Later: swap to Redis using REDIS_URL.
  */
-export async function cacheGet(_key) {
-  // TODO: connect to Redis; return null stub
-  return null;
-}
-export async function cacheSet(_key, _value, _ttlSeconds = 86400) {
-  // TODO: connect to Redis; log only
-  console.log("[cache:set]", _key, "(ttl:", _ttlSeconds, "s)");
+const memory = new Map();
+
+export async function cacheGet(key) {
+  if (!key) return null;
+  const hit = memory.get(key);
+  if (!hit) return null;
+  const { value, expiresAt } = hit;
+  if (expiresAt && Date.now() > expiresAt) {
+    memory.delete(key);
+    return null;
+  }
+  return value;
 }
 
+export async function cacheSet(key, value, ttlSeconds = 86400) {
+  if (!key) return;
+  const expiresAt = ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : null;
+  memory.set(key, { value, expiresAt });
+}

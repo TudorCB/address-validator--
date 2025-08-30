@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
 import { verifySession } from "../../lib/session-verify.js";
 import { haversineKm } from "../../lib/haversine.js";
+import { rateLimit } from "../../lib/rate-limit.js";
 
 export async function action({ request }) {
   try {
@@ -10,6 +11,17 @@ export async function action({ request }) {
     if (request.method !== "POST") {
       return json({ error: "method_not_allowed" }, { status: 405 });
     }
+
+    // Per-IP rate limit (simple: IP + path)
+    const xfwd = request.headers.get("x-forwarded-for") || "";
+    const realIp = request.headers.get("x-real-ip") || request.headers.get("remote-addr") || "unknown";
+    const ip = (xfwd.split(",")[0] || realIp || "unknown").trim();
+    const pathname = new URL(request.url).pathname;
+    const rlKey = `${ip}:${pathname}`;
+    const { allowed } = rateLimit({ key: rlKey });
+    if (!allowed) return json({ error: "rate_limited" }, { status: 429 });
+    const _cacheKeyBase = rlKey; // reserved for future caching
+    void _cacheKeyBase;
 
     const { customerLocation, pickupLocations = [] } = await request.json();
 
@@ -41,4 +53,3 @@ export async function action({ request }) {
 }
 
 export const loader = () => new Response("Not Found", { status: 404 });
-
