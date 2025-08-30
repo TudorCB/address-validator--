@@ -12,9 +12,21 @@ export const action = async ({ request }) => {
   const form = await request.formData();
   const radiusStr = form.get("pickupRadiusKm");
   const blockPoBoxesStr = form.get("blockPoBoxes");
+  const autoApplyCorrectionsStr = form.get("autoApplyCorrections");
+  const softModeStr = form.get("softMode");
+
   const radius = Number(radiusStr);
   const blockPoBoxes = blockPoBoxesStr === "on" || blockPoBoxesStr === "true";
-  updateSettings({ pickupRadiusKm: isNaN(radius) ? undefined : radius, blockPoBoxes });
+  const autoApplyCorrections = autoApplyCorrectionsStr === "on" || autoApplyCorrectionsStr === "true";
+  const softMode = softModeStr === "on" || softModeStr === "true";
+
+  updateSettings({
+    pickupRadiusKm: isNaN(radius) ? undefined : radius,
+    blockPoBoxes,
+    autoApplyCorrections,
+    softMode,
+  });
+
   return redirect("/settings?saved=1");
 };
 
@@ -31,7 +43,7 @@ export default function SettingsPage() {
               <div style={{ padding: 16 }}>
                 <Text as="h2" variant="headingMd">Validation Rules</Text>
                 <Form method="post">
-                  <div style={{ display: "grid", gap: 16, maxWidth: 480, marginTop: 16 }}>
+                  <div style={{ display: "grid", gap: 16, maxWidth: 520, marginTop: 16 }}>
                     <TextField
                       label="Pickup radius (km)"
                       name="pickupRadiusKm"
@@ -40,14 +52,22 @@ export default function SettingsPage() {
                       defaultValue={String(settings.pickupRadiusKm)}
                       autoComplete="off"
                     />
+                    <Checkbox
+                      label="Block PO Boxes for shipping"
+                      name="blockPoBoxes"
+                      defaultChecked={settings.blockPoBoxes}
+                    />
+                    <Checkbox
+                      label="Auto-apply suggested corrections at checkout"
+                      name="autoApplyCorrections"
+                      defaultChecked={settings.autoApplyCorrections}
+                    />
+                    <Checkbox
+                      label="Soft mode (never block checkout — warnings only)"
+                      name="softMode"
+                      defaultChecked={settings.softMode}
+                    />
                     <div>
-                      <Checkbox
-                        label="Block PO Boxes for shipping"
-                        name="blockPoBoxes"
-                        defaultChecked={settings.blockPoBoxes}
-                      />
-                    </div>
-                    <div style={{ marginTop: 8 }}>
                       <Button submit primary>Save</Button>
                     </div>
                   </div>
@@ -63,4 +83,3 @@ export default function SettingsPage() {
     </AppFrame>
   );
 }
-

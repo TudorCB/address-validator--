@@ -73,6 +73,7 @@ function CheckoutAddressValidator() {
   const shipping = useShippingAddress();
   const applyShippingAddressChange = useApplyShippingAddressChange();
 
+  const [settings, setSettings] = useState(null);
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const mounted = useRef(true);
@@ -92,9 +93,27 @@ function CheckoutAddressValidator() {
 
   const debounced = useDebounced(addr, 700);
 
+  // Fetch settings once
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await api.sessionToken.get();
+        const res = await fetch("/api/settings", { headers: { authorization: `Bearer ${token}` } });
+        const json = await res.json();
+        if (!mounted.current) return;
+        setSettings(json?.settings || {});
+      } catch (e) {
+        console.error("[checkout-ui] settings fetch failed", e);
+      }
+    })();
+    return () => { mounted.current = false; };
+  }, []);
+
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
     if (!response) return;
-    const shouldBlock = isBlockingAction(response.action);
+    const serverThinksBlock = isBlockingAction(response.action);
+    const soft = !!settings?.softMode;
+    const shouldBlock = serverThinksBlock && !soft;
     if (shouldBlock && canBlockProgress) {
       return {
         behavior: "block",
@@ -111,10 +130,7 @@ function CheckoutAddressValidator() {
       const token = await api.sessionToken.get();
       const res = await fetch("/api/validate-address", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify({
           context: { source: "checkout", shopDomain: api.shopOrigin || "unknown" },
           address: debounced,
@@ -124,6 +140,22 @@ function CheckoutAddressValidator() {
       const json = await res.json();
       if (!mounted.current) return;
       setResponse(json);
+
+      // Auto-apply correction (server-authoritative) if enabled
+      const autoApply = (json?.settings?.autoApplyCorrections ?? settings?.autoApplyCorrections) === true;
+      if (autoApply && json?.action === "CORRECTED" && json?.correctedAddress && applyShippingAddressChange) {
+        await applyShippingAddressChange({
+          type: "updateShippingAddress",
+          address: {
+            address1: json.correctedAddress.address1 || undefined,
+            address2: json.correctedAddress.address2 || undefined,
+            city: json.correctedAddress.city || undefined,
+            provinceCode: json.correctedAddress.province || json.correctedAddress.provinceCode || undefined,
+            postalCode: json.correctedAddress.zip || undefined,
+            countryCode: json.correctedAddress.country || undefined,
+          },
+        });
+      }
     } catch (e) {
       console.error("[checkout-ui] validate error", e);
     } finally {
@@ -132,19 +164,14 @@ function CheckoutAddressValidator() {
   }
 
   useEffect(() => {
-    mounted.current = true;
     validateNow();
-    return () => { mounted.current = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced.address1, debounced.city, debounced.zip, debounced.country]);
 
   async function acceptSuggestion() {
     try {
       const corrected = response?.correctedAddress;
       if (!corrected || !applyShippingAddressChange) return;
-
-      // Attempt to write the corrected fields into Shopify’s shipping form.
-      // NOTE: This overwrites current values; provide only fields you want changed.
       await applyShippingAddressChange({
         type: "updateShippingAddress",
         address: {
@@ -156,11 +183,8 @@ function CheckoutAddressValidator() {
           countryCode: corrected.country || undefined,
         },
       });
-
-      // Re-validate after writeback to refresh UI
       await validateNow();
     } catch (e) {
-      // Wallet flows and permission issues can throw.
       console.error("[checkout-ui] applyShippingAddressChange failed", e);
     }
   }
@@ -172,4 +196,3 @@ export default reactExtension(
   "purchase.checkout.delivery-address.render",
   () => <CheckoutAddressValidator />
 );
-

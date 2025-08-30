@@ -1,55 +1,69 @@
 import { validateWithGoogle, extractLatLng, buildStaticMapUrl } from "./google.js";
 import { normalizeAddress } from "./address-normalize.js";
-import { cacheGet, cacheSet } from "./cache.js";
+import { getSettings } from "./settings.js";
+
+function isPoBox(addressLine = "") {
+  return /^P(?:OST)?\.?\s*O(?:FFICE)?\.?\s*BOX\b/i.test(String(addressLine).trim());
+}
 
 /**
  * Minimal pipeline stub:
+ * - Normalize address
+ * - Optionally block PO Boxes
  * - Pretend Google validation succeeds
- * - Suggest OK action
+ * - Apply softMode downgrade if enabled
  */
 export async function validateAddressPipeline(payload) {
+  const settings = getSettings();
   const address = payload?.address || null;
-  const { cleaned, key } = normalizeAddress(address);
+  const { cleaned } = normalizeAddress(address);
 
-  // Optional cache lookup
-  try {
-    const cached = await cacheGet(key);
-    if (cached) {
-      try {
-        const parsed = typeof cached === "string" ? JSON.parse(cached) : cached;
-        if (parsed && typeof parsed === "object") return parsed;
-      } catch (_) {
-        // ignore parse errors and continue
-      }
+  // PO Box rule (server-side)
+  if (settings.blockPoBoxes && isPoBox(cleaned.address1)) {
+    const base = {
+      status: "ok",
+      action: "BLOCK_PO_BOX",
+      message: "PO Boxes are not accepted for shipping.",
+      correctedAddress: cleaned,
+      dpvFlags: { deliverable: false, poBox: true },
+      rooftop: null,
+      mapImageUrl: null,
+      confidence: 0.9,
+      cacheKey: null,
+      settings,
+    };
+    // Soft mode transforms hard blocks into warnings
+    if (settings.softMode) {
+      base.action = "UNVERIFIED";
+      base.message = "PO Box detected. Proceeding in soft mode; please confirm your address.";
     }
-  } catch (_) {
-    // cache is best-effort; ignore errors
+    return base;
   }
 
+  // Provider (stub)
   const g = await validateWithGoogle(cleaned);
-
   const rooftop = extractLatLng(g?.result);
   const mapImageUrl = rooftop ? buildStaticMapUrl(rooftop.lat, rooftop.lng) : null;
 
-  const response = {
+  // Default "OK" stub outcome
+  let result = {
     status: "ok",
     action: "OK",
     message: "Stubbed pipeline: address validated.",
-    correctedAddress: cleaned || null,
+    correctedAddress: cleaned,
     dpvFlags: { deliverable: true },
     rooftop: rooftop || null,
     mapImageUrl,
     confidence: 0.9,
-    cacheKey: key
+    cacheKey: null,
+    settings,
   };
 
-  // Best-effort cache set
-  try {
-    const ttl = Number(process.env.CACHE_TTL_SECONDS ?? 86400) || 86400;
-    await cacheSet(key, response, ttl);
-  } catch (_) {
-    // ignore cache errors
+  // Soft mode post-process: if ever BLOCK_* is returned, downgrade here
+  if (settings.softMode && String(result.action).startsWith("BLOCK_")) {
+    result.action = "UNVERIFIED";
+    result.message = "Soft mode enabled — validation warnings only.";
   }
 
-  return response;
+  return result;
 }
