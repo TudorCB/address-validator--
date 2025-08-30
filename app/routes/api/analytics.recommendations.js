@@ -3,6 +3,23 @@ import { verifySession } from "../../lib/session-verify.js";
 import { readLogs } from "../../lib/logs.js";
 import { getSettings } from "../../lib/settings.js";
 
+function parseFilters(request) {
+  const url = new URL(request.url);
+  const range = url.searchParams.get("range") || "7d";
+  const segment = url.searchParams.get("segment") || "all";
+  const days = range === "14d" ? 14 : range === "30d" ? 30 : 7;
+  const since = Date.now() - days * 24 * 3600 * 1000;
+  return { days, since, segment };
+}
+function segmentMatch(log, segment) {
+  if (segment === "all") return true;
+  const src = (log.contextSource || "").toLowerCase();
+  if (segment === "checkout") return src === "checkout";
+  if (segment === "thank_you") return src === "thank_you";
+  if (segment === "customer_account") return src === "customer_account";
+  return true;
+}
+
 /**
  * Very small “insights engine” stub:
  *  - finds patterns and returns ACTIONABLE recommendations with CTAs
@@ -12,8 +29,9 @@ export async function loader({ request }) {
   const ok = await verifySession(request);
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
 
-  const logs = readLogs({ limit: 1000 });
+  const { since, segment } = parseFilters(request);
   const settings = getSettings();
+  const logs = readLogs({ limit: 5000 }).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
   const insights = [];
 
   const blockedMissingUnit = logs.filter((l) => l.action === "BLOCK_MISSING_UNIT").length;
@@ -22,8 +40,7 @@ export async function loader({ request }) {
       id: "missing-unit-helper",
       severity: "high",
       title: "Many addresses missing Apartment/Unit",
-      body:
-        "Buyers frequently omit Apt/Unit. Add a helper hint and hard-require the field when DPV suggests it.",
+      body: "Buyers frequently omit Apt/Unit. Require the field when DPV suggests it and add inline helper text.",
       cta: { label: "Enable hard requirement", href: "/settings" },
       evidence: { occurrences: blockedMissingUnit },
     });
@@ -35,8 +52,7 @@ export async function loader({ request }) {
       id: "po-box-policy",
       severity: "medium",
       title: "Decide your PO Box policy",
-      body:
-        "We found no PO Box blocks, but your policy is currently permissive. Consider enabling PO Box blocking to reduce returns.",
+      body: "No PO Box blocks detected, but policy allows them. Consider blocking to reduce returns.",
       cta: { label: "Review PO Box setting", href: "/settings" },
     });
   }
@@ -47,9 +63,9 @@ export async function loader({ request }) {
       id: "auto-apply-corrections",
       severity: "medium",
       title: "Auto-apply common corrections",
-      body: "You’ve had many corrections. Auto-apply can reduce friction and failures.",
+      body: "Many corrections occurred. Auto-apply can reduce friction and failed deliveries.",
       cta: { label: "Enable auto-apply", href: "/settings" },
-      evidence: { correctedLast1000: corrected },
+      evidence: { correctedLastN: corrected },
     });
   }
 
@@ -59,8 +75,7 @@ export async function loader({ request }) {
       id: "pickup-availability",
       severity: "low",
       title: "Promote local pickup for undeliverable addresses",
-      body:
-        "Some buyers landed on addresses we can’t ship to. Offer nearby pickup to save the sale.",
+      body: "Some addresses weren’t deliverable. Offer nearby pickup to save the sale.",
       cta: { label: "Tune pickup radius", href: "/settings" },
       evidence: { suggestPickupCount: suggestPickup },
     });
@@ -69,4 +84,3 @@ export async function loader({ request }) {
   return json({ status: "ok", insights });
 }
 export const action = () => new Response("Not Found", { status: 404 });
-

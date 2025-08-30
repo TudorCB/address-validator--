@@ -21,6 +21,14 @@ export async function action({ request }) {
     }
 
     const payload = await request.json();
+    const contextSource = payload?.context?.source || null;
+    const addr = payload?.address || {};
+    const meta = {
+      addressZip: addr.zip || null,
+      addressCity: addr.city || null,
+      addressProvince: addr.province || addr.provinceCode || null,
+      addressCountry: addr.country || null,
+    };
     const hasContext = !!payload?.context?.source && !!payload?.context?.shopDomain;
     const hasAddress = !!payload?.address?.address1 && !!payload?.address?.city && !!payload?.address?.country;
     if (!hasContext || !hasAddress) {
@@ -34,13 +42,21 @@ export async function action({ request }) {
       status: "ok",
       action: result?.action,
       shopDomain: payload?.context?.shopDomain,
+      contextSource,
+      ...meta,
       message: result?.message,
     });
 
     return json(result, { status: 200 });
   } catch (err) {
     console.error("validate-address error", err);
-    writeLog({ route: "validate-address", status: "error", reason: String(err && err.message ? err.message : err) });
+    writeLog({
+      route: "validate-address",
+      status: "error",
+      contextSource: contextSource || null,
+      ...meta,
+      reason: String(err && err.message ? err.message : err),
+    });
     return json({ status: "error", error: "server_error" }, { status: 500 });
   }
 }
