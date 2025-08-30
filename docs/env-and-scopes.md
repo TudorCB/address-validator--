@@ -45,3 +45,14 @@ Scopes can be defined in `shopify.app.toml` or via the `SCOPES` environment vari
 - Never embed sensitive API keys (Google, UPS, etc.) in frontend extension bundles.
 - Extensions should use `getSessionToken` to get a short-lived token, which must be verified by the server-side application.
 
+## Quick Install URL
+Use this link to install the app to your development store (per-user):
+
+https://quickstart-23c8bad8.myshopify.com/admin/oauth/authorize?client_id=5157c62e833750cbbe886fa1f9995997&scope=read_checkouts,read_customers,write_customers,read_orders&redirect_uri=https%3A%2F%2Fsn-architecture-specifics-lid.trycloudflare.com%2Fauth%2Fcallback&state=STATE&grant_options%5B%5D=per-user
+
+- Replace `STATE` with a cryptographically random nonce that your app validates on callback.
+- Scopes and redirect URI reflect the current configuration in `shopify.app.toml` and `.env`.
+
+Offline access token variant (optional):
+
+https://quickstart-23c8bad8.myshopify.com/admin/oauth/authorize?client_id=5157c62e833750cbbe886fa1f9995997&scope=read_checkouts,read_customers,write_customers,read_orders&redirect_uri=https%3A%2F%2Fsn-architecture-specifics-lid.trycloudflare.com%2Fauth%2Fcallback&state=STATE

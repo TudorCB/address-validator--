@@ -1,7 +1,7 @@
 name = "Address Validator++  Customer Addresses"
-type = "customer_accounts_ui_extension"
+type = "ui_extension"
+surface = "customer-account"
 api_version = "2025-01"
 extension_points = [
-  "customer-account.profile.addresses.render-after"
+  { target = "customer-account.profile.addresses.render-after", module = "src/index.jsx" }
 ]
-
