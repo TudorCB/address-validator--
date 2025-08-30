@@ -41,6 +41,11 @@ export default function AppFrame({ children }) {
       label: "Settings",
       destination: "/settings",
       selected: location.pathname.startsWith("/settings")
+    },
+    {
+      label: "Analytics",
+      destination: "/analytics",
+      selected: location.pathname.startsWith("/analytics")
     }
   ]), [location.pathname]);
 
@@ -63,4 +68,3 @@ export default function AppFrame({ children }) {
     </Frame>
   );
 }
-
