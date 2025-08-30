@@ -39,7 +39,7 @@ function View({ state, onAcceptSuggestion }) {
   if (state.loading) {
     return (
       <InlineStack alignment="center" blockAlignment="center">
-        <Spinner /> <Text>Validating address</Text>
+        <Spinner /> <Text>Validating address…</Text>
       </InlineStack>
     );
   }

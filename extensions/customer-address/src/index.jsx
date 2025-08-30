@@ -4,7 +4,7 @@ Banner,
 BlockStack,
 Text,
 useApi,
-} from "@shopify/ui-extensions-react/customer-account";
+} from "@shopify/ui-extensions-react/checkout";
 import { useEffect, useState } from "react";
 
 function CustomerAddressHygiene() {
