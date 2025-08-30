@@ -1,9 +1,11 @@
 import { json } from "@remix-run/node";
-import { Page, Layout, Card, Text, Button, Select, InlineStack, Tooltip } from "@shopify/polaris";
+import { Page, Layout, Card, Text, Button, Select, InlineStack } from "@shopify/polaris";
 import { useNavigate } from "@remix-run/react";
 import AppFrame from "../components/AppFrame.jsx";
 import React from "react";
 import ClientOnly from "../components/ClientOnly.jsx";
+import { SkeletonKpi, SkeletonChart, SkeletonCardLines } from "../components/Skeletons.jsx";
+import { EmptyAnalytics, EmptyProblems } from "../components/EmptyStates.jsx";
 const StackedAreaChartClient = React.lazy(() => import("../components/StackedAreaChart.client.jsx"));
 
 export const loader = async () => json({});
@@ -14,13 +16,9 @@ function Kpi({ title, value, help }) {
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Text as="h3" variant="headingMd">{title}</Text>
-          {help ? (
-            <Tooltip content={help}>
-              <span style={{ cursor: "help", color: "#616161" }}>?</span>
-            </Tooltip>
-          ) : null}
         </div>
         <div style={{ fontSize: 28, fontWeight: 600, marginTop: 6 }}>{value}</div>
+        {help ? <div style={{ color: "#616161", marginTop: 4 }}>{help}</div> : null}
       </div>
     </Card>
   );
@@ -91,27 +89,41 @@ export default function AnalyticsPage() {
   const navigate = useNavigate();
   const [range, setRange] = React.useState("7d");
   const [segment, setSegment] = React.useState("all");
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [hasData, setHasData] = React.useState(false);
   const [summary, setSummary] = React.useState(null);
   const [insights, setInsights] = React.useState([]);
   const [problems, setProblems] = React.useState({ topByZip: [], topByCity: [] });
 
   async function fetchAll() {
-    const headers = { authorization: "Bearer dev.stub.jwt" }; // TODO: replace with real session token
-    const s = await fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then(r => r.json());
-    const i = await fetch(`/api/analytics.recommendations?range=${range}&segment=${segment}`, { headers }).then(r => r.json());
-    const p = await fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then(r => r.json());
+    try {
+      setIsLoading(true);
+      const headers = { authorization: "Bearer dev.stub.jwt" }; // TODO: replace with real session token
+      const [s, i, p] = await Promise.all([
+        fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
+        fetch(`/api/analytics.recommendations?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
+        fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
+      ]);
 
-    // attach quick toggles
-    const enriched = (i?.insights || []).map(ins => {
-      if (ins.id === "po-box-policy") return { ...ins, quickToggle: { label: "Enable PO Box block", patch: { blockPoBoxes: true } } };
-      if (ins.id === "auto-apply-corrections") return { ...ins, quickToggle: { label: "Enable Auto-apply", patch: { autoApplyCorrections: true } } };
-      if (ins.id === "missing-unit-helper") return { ...ins, quickToggle: { label: "Turn OFF Soft Mode", patch: { softMode: false } } };
-      return ins;
-    });
+      // attach quick toggles
+      const enriched = (i?.insights || []).map(ins => {
+        if (ins.id === "po-box-policy") return { ...ins, quickToggle: { label: "Enable PO Box block", patch: { blockPoBoxes: true } } };
+        if (ins.id === "auto-apply-corrections") return { ...ins, quickToggle: { label: "Enable Auto-apply", patch: { autoApplyCorrections: true } } };
+        if (ins.id === "missing-unit-helper") return { ...ins, quickToggle: { label: "Turn OFF Soft Mode", patch: { softMode: false } } };
+        return ins;
+      });
 
-    setSummary(s);
-    setInsights(enriched);
-    setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
+      setSummary(s);
+      setInsights(enriched);
+      setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
+      const total = s?.kpis?.totalValidations ?? 0;
+      setHasData(total > 0);
+    } catch (e) {
+      console.error(e);
+      setHasData(false);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   React.useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, [range, segment]);
@@ -206,66 +218,120 @@ export default function AnalyticsPage() {
             </Card>
           </Layout.Section>
 
-          <Layout.Section oneThird>
-            <Kpi title="Total validations" value={k.totalValidations ?? 0} help="All address checks across sources." />
-          </Layout.Section>
-          <Layout.Section oneThird>
-            <Kpi title="Deliverable (OK)" value={k.deliverableOk ?? 0} help="Passed without intervention." />
-          </Layout.Section>
-          <Layout.Section oneThird>
-            <Kpi title="Corrected" value={k.corrected ?? 0} help="Normalized to carrier-friendly format." />
-          </Layout.Section>
+          {isLoading ? (
+            <>
+              <Layout.Section oneThird><SkeletonKpi /></Layout.Section>
+              <Layout.Section oneThird><SkeletonKpi /></Layout.Section>
+              <Layout.Section oneThird><SkeletonKpi /></Layout.Section>
 
-          <Layout.Section oneThird>
-            <Kpi title="Blocked" value={k.blocked ?? 0} help="Hard gates (e.g., missing unit, PO box)." />
-          </Layout.Section>
-          <Layout.Section oneThird>
-            <Kpi title="Suggest pickup" value={k.suggestPickup ?? 0} help="Saved sales via pickup suggestion." />
-          </Layout.Section>
-          <Layout.Section oneThird>
-            <Kpi title="Est. savings" value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} help="Rough savings from prevented failed deliveries." />
-          </Layout.Section>
+              <Layout.Section oneThird><SkeletonKpi /></Layout.Section>
+              <Layout.Section oneThird><SkeletonKpi /></Layout.Section>
+              <Layout.Section oneThird><SkeletonKpi /></Layout.Section>
 
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 16 }}>
-                <Text as="h3" variant="headingMd">Validation trend</Text>
-                <div style={{ height: 280, marginTop: 16 }}>
-                  <ClientOnly>
-                    <React.Suspense fallback={<div style={{ color: "#616161" }}>Loading chart...</div>}>
-                      <StackedAreaChartClient
-                        isAnimated
-                        data={trend}
-                        theme="Default"
-                        xAxisOptions={{ labelFormatter: (v) => v?.slice(5) }}
-                      />
-                    </React.Suspense>
-                  </ClientOnly>
-                </div>
-              </div>
-            </Card>
-          </Layout.Section>
+              <Layout.Section><SkeletonChart /></Layout.Section>
+              <Layout.Section><SkeletonCardLines lines={4} /></Layout.Section>
+              <Layout.Section><SkeletonCardLines lines={4} /></Layout.Section>
+            </>
+          ) : null}
 
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 16 }}>
-                <Text as="h3" variant="headingMd">Actionable insights</Text>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12, marginTop: 12 }}>
-                  {insights.length === 0
-                    ? <div style={{ color:"#616161" }}>No insights yet - come back after more traffic.</div>
-                  : insights.map(i => <InsightCard key={i.id} insight={i} onQuickToggle={quickToggle} />)
-                  }
-                </div>
-              </div>
-            </Card>
-          </Layout.Section>
+          {!isLoading && !hasData ? (
+            <>
+              <Layout.Section>
+                <EmptyAnalytics
+                  onGoToSettings={() => navigate("/settings")}
+                  onGoToDocs={() => window.open("https://help.shopify.com/en/manual", "_blank")}
+                />
+              </Layout.Section>
+              <Layout.Section>
+                <EmptyProblems />
+              </Layout.Section>
+            </>
+          ) : null}
 
-          <Layout.Section>
-            <ProblemsTable title="Top problem areas - by ZIP" rows={problems.topByZip} />
-          </Layout.Section>
-          <Layout.Section>
-            <ProblemsTable title="Top problem areas - by City" rows={problems.topByCity} />
-          </Layout.Section>
+          {!isLoading && hasData ? (
+            <>
+              <Layout.Section oneThird>
+                <Kpi title="Total validations" value={k.totalValidations ?? 0} help="All address checks across sources." />
+              </Layout.Section>
+              <Layout.Section oneThird>
+                <Kpi title="Deliverable (OK)" value={k.deliverableOk ?? 0} help="Passed without intervention." />
+              </Layout.Section>
+              <Layout.Section oneThird>
+                <Kpi title="Corrected" value={k.corrected ?? 0} help="Normalized to carrier-friendly format." />
+              </Layout.Section>
+
+              <Layout.Section oneThird>
+                <Kpi title="Blocked" value={k.blocked ?? 0} help="Hard gates (e.g., missing unit, PO box)." />
+              </Layout.Section>
+              <Layout.Section oneThird>
+                <Kpi title="Suggest pickup" value={k.suggestPickup ?? 0} help="Saved sales via pickup suggestion." />
+              </Layout.Section>
+              <Layout.Section oneThird>
+                <Kpi title="Est. savings" value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} help="Rough savings from prevented failed deliveries." />
+              </Layout.Section>
+
+              <Layout.Section>
+                <Card>
+                  <div style={{ padding: 16 }}>
+                    <Text as="h3" variant="headingMd">Validation trend</Text>
+                    <div style={{ height: 280, marginTop: 16 }}>
+                      <ClientOnly>
+                        <React.Suspense fallback={<div style={{ color: "#616161" }}>Loading chart...</div>}>
+                          <StackedAreaChartClient
+                            isAnimated
+                            data={trend}
+                            theme="Default"
+                            xAxisOptions={{ labelFormatter: (v) => v?.slice(5) }}
+                          />
+                        </React.Suspense>
+                      </ClientOnly>
+                    </div>
+                  </div>
+                </Card>
+              </Layout.Section>
+
+              <Layout.Section>
+                <Card>
+                  <div style={{ padding: 16 }}>
+                    <Text as="h3" variant="headingMd">Actionable insights</Text>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12, marginTop: 12 }}>
+                      {(insights || []).length === 0 ? (
+                        <div style={{ color: "#616161" }}>No insights yet - come back after more traffic.</div>
+                      ) : (
+                        (insights || []).map(i => (
+                          <InsightCard
+                            key={i.id}
+                            insight={i}
+                            onQuickToggle={async (patch) => {
+                              try {
+                                const res = await fetch("/api/settings.update", {
+                                  method: "PATCH",
+                                  headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
+                                  body: JSON.stringify(patch),
+                                });
+                                if (!res.ok) throw new Error("toggle failed");
+                                await fetchAll();
+                              } catch (e) {
+                                console.error(e);
+                                alert("Could not update setting. See console.");
+                              }
+                            }}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </Layout.Section>
+
+              <Layout.Section>
+                <ProblemsTable title="Top problem areas - by ZIP" rows={problems.topByZip} />
+              </Layout.Section>
+              <Layout.Section>
+                <ProblemsTable title="Top problem areas - by City" rows={problems.topByCity} />
+              </Layout.Section>
+            </>
+          ) : null}
         </Layout>
       </Page>
     </AppFrame>
