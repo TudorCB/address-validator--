@@ -17,7 +17,8 @@
     "shopify": "shopify",
     "prisma": "prisma",
     "graphql-codegen": "graphql-codegen",
-    "vite": "vite"
+    "vite": "vite",
+    "test": "node tests/validate-address.smoke.js && node tests/pickup-distance.smoke.js"
   },
   "type": "module",
   "engines": {
