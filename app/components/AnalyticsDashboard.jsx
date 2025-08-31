@@ -117,8 +117,8 @@ export default function AnalyticsDashboard() {
 
   async function fetchData() {
     const headers = { authorization: `Bearer ${token}` };
-    const s = await fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
-    const p = await fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then((r) => r.json());
+    const s = await fetch(endpoints.analyticsSummary({ range, segment }), { headers }).then((r) => r.json());
+    const p = await fetch(endpoints.analyticsTopProblems({ range, segment }), { headers }).then((r) => r.json());
     setSummary(s);
     setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
   }
@@ -140,7 +140,7 @@ export default function AnalyticsDashboard() {
   async function applySettings() {
     try {
       const patch = { blockPoBoxes: poBoxBlock, softMode: !enforceUnit, autoApplyCorrections: !!autoApply };
-      const res = await fetch(`/api/settings.update`, {
+      const res = await fetch(endpoints.settingsUpdate(), {
         method: "PATCH",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify(patch),
@@ -443,3 +443,4 @@ export default function AnalyticsDashboard() {
     </Box>
   );
 }
+import { endpoints } from "../lib/api-endpoints.js";

@@ -8,6 +8,7 @@ import { SkeletonKpi, SkeletonChart, SkeletonCardLines } from "../components/Ske
 import { EmptyAnalytics, EmptyProblems } from "../components/EmptyStates.jsx";
 const StackedAreaChartClient = React.lazy(() => import("../components/StackedAreaChart.client.jsx"));
 import { t } from "../lib/i18n.js";
+import { endpoints } from "../lib/api-endpoints.js";
 
 export const loader = async () => json({});
 
@@ -102,10 +103,10 @@ export default function AnalyticsPage() {
       setIsLoading(true);
       const headers = { authorization: "Bearer dev.stub.jwt" }; // TODO: replace with real session token
       const [s, i, p, pm] = await Promise.all([
-        fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
-        fetch(`/api/analytics.recommendations?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
-        fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
-        fetch(`/api/analytics.providers`, { headers }).then(r => r.json()),
+        fetch(endpoints.analyticsSummary({ range, segment }), { headers }).then(r => r.json()),
+        fetch(endpoints.analyticsRecommendations({ range, segment }), { headers }).then(r => r.json()),
+        fetch(endpoints.analyticsTopProblems({ range, segment }), { headers }).then(r => r.json()),
+        fetch(endpoints.analyticsProviders(), { headers }).then(r => r.json()),
       ]);
 
       // attach quick toggles
@@ -144,7 +145,7 @@ export default function AnalyticsPage() {
 
   async function quickToggle(patch) {
     try {
-      const res = await fetch("/api/settings.update", {
+      const res = await fetch(endpoints.settingsUpdate(), {
         method: "PATCH",
         headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
         body: JSON.stringify(patch),
@@ -337,7 +338,7 @@ export default function AnalyticsPage() {
                             insight={i}
                             onQuickToggle={async (patch) => {
                               try {
-                                const res = await fetch("/api/settings.update", {
+                                const res = await fetch(endpoints.settingsUpdate(), {
                                   method: "PATCH",
                                   headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
                                   body: JSON.stringify(patch),

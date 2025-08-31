@@ -83,7 +83,7 @@ export default function SettingsPage() {
       setSimError(null);
       setSim(null);
       setSimLoading(true);
-      const res = await fetch('/api/analytics.simulate', {
+      const res = await fetch(endpoints.analyticsSimulate(), {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer dev.stub.jwt' },
         body: JSON.stringify({ toggles: { blockPoBoxes, softMode } }),
@@ -245,3 +245,4 @@ export default function SettingsPage() {
   );
 }
 
+import { endpoints } from "../lib/api-endpoints.js";
