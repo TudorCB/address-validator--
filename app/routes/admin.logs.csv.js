@@ -31,18 +31,18 @@ export async function loader({ request }) {
   const { since, segment } = parseFilters(request);
   const logs = (await readLogs({ limit: 10000 })).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
 
-  const rows = [["ts", "route", "action", "message", "shopDomain", "contextSource", "responseId"].map(esc).join(",")];
+  // Only include non-PII columns: city/zip/province/country and action (plus timestamp)
+  const rows = [["ts", "action", "city", "zip", "province", "country"].map(esc).join(",")];
 
   logs.forEach((l) => {
     rows.push(
       [
         new Date(l.ts || Date.now()).toISOString(),
-        l.route || "",
         l.action || "",
-        l.message || l.reason || "",
-        l.shopDomain || "",
-        l.contextSource || "",
-        l.providerResponseId || "",
+        l.addressCity || "",
+        l.addressZip || "",
+        l.addressProvince || "",
+        l.addressCountry || "",
       ].map(esc).join(","),
     );
   });
