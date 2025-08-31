@@ -10,7 +10,6 @@ const StackedAreaChartClient = React.lazy(() => import("../components/StackedAre
 import { t } from "../lib/i18n.js";
 import { endpoints } from "../lib/api-endpoints.js";
 import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
-import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
 export const loader = async () => json({});
 

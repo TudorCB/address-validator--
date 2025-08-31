@@ -48,7 +48,9 @@ export async function getAuthorizationHeader() {
     return { authorization: `Bearer ${token}` };
   }
   // Fallback for local dev only
-  if (process.env.NODE_ENV !== 'production') {
+  const isProd = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE === 'production')
+    || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production');
+  if (!isProd) {
     return { authorization: 'Bearer dev.stub.jwt' };
   }
   return {};
@@ -59,4 +61,3 @@ export async function authFetch(input, init = {}) {
   const nextInit = { ...init, headers: { ...(init.headers || {}), ...hdr } };
   return fetch(input, nextInit);
 }
-
