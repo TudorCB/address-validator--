@@ -73,6 +73,31 @@ export default function SettingsPage() {
   const costNumber = Number(failedDeliveryCostUsd);
   const costError = !Number.isFinite(costNumber) || costNumber < 0 || costNumber > 1000 ? "Must be between 0 and 1000" : undefined;
 
+  const [sim, setSim] = React.useState(null); // { delta, baseline, simulated }
+  const [simError, setSimError] = React.useState(null);
+  const [simLoading, setSimLoading] = React.useState(false);
+
+  async function onSimulate() {
+    try {
+      setSimError(null);
+      setSim(null);
+      setSimLoading(true);
+      const res = await fetch('/api/analytics.simulate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer dev.stub.jwt' },
+        body: JSON.stringify({ toggles: { blockPoBoxes, softMode } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Simulate failed: ${res.status}`);
+      setSim(data);
+    } catch (e) {
+      console.error(e);
+      setSimError(String(e.message || e));
+    } finally {
+      setSimLoading(false);
+    }
+  }
+
   return (
     <AppFrame>
       <Page title="Address Validator++: Settings" subtitle="Customize your address policies">
@@ -177,8 +202,25 @@ export default function SettingsPage() {
                           error={result?.error?.includes("Failed Delivery Cost") ? result.error : costError}
                         />
                       </div>
-                      <div />
+                      <div>
+                        <Button onClick={onSimulate} loading={simLoading}>Simulate changes</Button>
+                      </div>
                     </InlineStack>
+                    {simError ? (
+                      <Box paddingBlockStart="200"><Banner status="critical" title={String(simError)} /></Box>
+                    ) : null}
+                    {sim?.delta ? (
+                      <Box paddingBlockStart="200">
+                        <Banner status="info" title="Projected impact">
+                          <div style={{ marginTop: 8 }}>
+                            <div><b>Blocked:</b> {sim.delta.blocked >= 0 ? `+${sim.delta.blocked}` : sim.delta.blocked}</div>
+                            <div><b>OK:</b> {sim.delta.ok >= 0 ? `+${sim.delta.ok}` : sim.delta.ok}</div>
+                            <div><b>Corrected:</b> {sim.delta.corrected >= 0 ? `+${sim.delta.corrected}` : sim.delta.corrected}</div>
+                            <div><b>Unverified:</b> {sim.delta.unver >= 0 ? `+${sim.delta.unver}` : sim.delta.unver}</div>
+                          </div>
+                        </Banner>
+                      </Box>
+                    ) : null}
                   </Box>
                 </Box>
               </Card>
