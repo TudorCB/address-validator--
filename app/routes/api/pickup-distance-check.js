@@ -1,8 +1,7 @@
 import { json } from "@remix-run/node";
 import { verifySession } from "../../lib/session-verify.js";
 import { haversineKm } from "../../lib/haversine.js";
-import { rateLimit } from "../../lib/rate-limit.js";
-import { rateLimitShop } from "../../lib/rate-limit-shop.js";
+import { rateLimitKey } from "../../lib/rate-limit-redis.js";
 import { getSettings } from "../../lib/settings.js";
 import { writeLog } from "../../lib/logs.js";
 
@@ -12,8 +11,8 @@ function rateKey(request) {
 }
 
 export async function action({ request }) {
-  const { allowed, resetAt } = rateLimit({ key: rateKey(request), max: 300, windowMs: 60_000 });
-  if (!allowed) return json({ error: "rate_limited", resetAt }, { status: 429 });
+  const ipRate = await rateLimitKey({ key: rateKey(request), max: 300, windowSec: 60 });
+  if (!ipRate.allowed) return json({ error: "rate_limited", resetAt: ipRate.resetAt }, { status: 429 });
 
   try {
     const authorized = await verifySession(request);
@@ -23,7 +22,7 @@ export async function action({ request }) {
     const body = await request.json();
     const shopDomain = body?.context?.shopDomain || "unknown";
     const perShopMax = Number(process.env.RATE_LIMIT_PER_SHOP_MIN || 600);
-    const shopRate = rateLimitShop({ shopDomain, max: Number.isFinite(perShopMax) ? perShopMax : 600 });
+    const shopRate = await rateLimitKey({ key: `shop:${shopDomain}`, max: Number.isFinite(perShopMax) ? perShopMax : 600, windowSec: 60 });
     if (!shopRate.allowed) return json({ error: "rate_limited", scope: "shop", resetAt: shopRate.resetAt }, { status: 429 });
     const { customerLocation, pickupLocations = [], radiusKm } = body || {};
     const contextSource = body?.context?.source || "checkout";
