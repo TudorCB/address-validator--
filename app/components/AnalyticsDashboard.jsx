@@ -15,8 +15,6 @@ import ClientOnly from "./ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("./StackedAreaChart.client.jsx"));
 import SafeIcon from "./SafeIcon.jsx";
 import { useLocation } from "@remix-run/react";
-import ReactDOM from "react-dom";
-import React from "react";
 import { ToastContext } from "./ToastContext.jsx";
 import { endpoints } from "../lib/api-endpoints.js";
 import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
