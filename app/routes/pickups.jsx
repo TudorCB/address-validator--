@@ -4,6 +4,7 @@ import { useLoaderData } from "@remix-run/react";
 import { Page, Layout, Card, Text, TextField, Button, InlineStack, DataTable, Modal, Box, Banner } from "@shopify/polaris";
 import AppFrame from "../components/AppFrame.jsx";
 import { t } from "../lib/i18n.js";
+import { endpoints } from "../lib/api-endpoints.js";
 
 export const loader = async () => json({});
 
@@ -40,7 +41,7 @@ export default function PickupsPage() {
   async function refresh() {
     try {
       setLoading(true);
-      const res = await fetch("/api/pickups", { headers });
+      const res = await fetch(endpoints.pickupsList(), { headers });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Fetch failed: ${res.status}`);
       setRows(data.pickups || []);
@@ -62,7 +63,7 @@ export default function PickupsPage() {
       if (err) return setFormError(err);
       setFormError(null);
       setSaving(true);
-      const res = await fetch("/api/pickups", {
+      const res = await fetch(endpoints.pickupsList(), {
         method: "POST",
         headers: { ...headers, "content-type": "application/json" },
         body: JSON.stringify({ name: name.trim(), lat: Number(lat), lng: Number(lng) }),
@@ -81,7 +82,7 @@ export default function PickupsPage() {
   async function onDelete(id) {
     if (!window.confirm(t("pickups.delete_confirm"))) return;
     try {
-      const res = await fetch(`/api/pickups/${encodeURIComponent(id)}`, { method: "DELETE", headers });
+      const res = await fetch(endpoints.pickupById(id), { method: "DELETE", headers });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `Delete failed: ${res.status}`);
       await refresh();
@@ -97,7 +98,7 @@ export default function PickupsPage() {
       if (err) return setFormError(err);
       setFormError(null);
       setSaving(true);
-      const res = await fetch(`/api/pickups/${encodeURIComponent(editing.id)}`, {
+      const res = await fetch(endpoints.pickupById(editing.id), {
         method: "PATCH",
         headers: { ...headers, "content-type": "application/json" },
         body: JSON.stringify({ name: editing.name.trim(), lat: Number(editing.lat), lng: Number(editing.lng) }),

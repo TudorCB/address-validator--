@@ -15,6 +15,7 @@ import {
 import ClientOnly from "./ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("./StackedAreaChart.client.jsx"));
 import SafeIcon from "./SafeIcon.jsx";
+import { endpoints } from "../lib/api-endpoints.js";
 
 function KpiCard({ title, value, subtitle, trend, trendPositive, icon }) {
   return (
@@ -125,7 +126,7 @@ export default function AnalyticsDashboard() {
 
   async function fetchSettings() {
     try {
-      const res = await fetch(`/api/settings`, { headers: { authorization: `Bearer ${token}` } });
+      const res = await fetch(endpoints.settingsGet(), { headers: { authorization: `Bearer ${token}` } });
       const body = await res.json();
       const st = body?.settings || {};
       setPoBoxBlock(!!st.blockPoBoxes);
@@ -443,4 +444,3 @@ export default function AnalyticsDashboard() {
     </Box>
   );
 }
-import { endpoints } from "../lib/api-endpoints.js";
