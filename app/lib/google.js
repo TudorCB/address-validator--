@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { withRetry, withCircuitBreaker } from "./http-retry.js";
 
 /**
  * Google Address Validation API.
@@ -41,17 +42,32 @@ export async function validateWithGoogle(address) {
     // Let Google apply USPS normalization where available in the US
     enableUspsCass: regionCode === "US",
   };
-
   const url = `https://addressvalidation.googleapis.com/v1:validateAddress?key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+
+  const guardedFetch = withCircuitBreaker(async () => {
+    const res = await withRetry(async () => {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.status >= 500) {
+        const err = new Error(`google_validate_address_failed:${r.status}`);
+        err.code = "GOOGLE_5XX";
+        throw err;
+      }
+      return r;
+    }, { retries: 2, baseDelayMs: 200 });
+
+    if (!res.ok) {
+      const err = new Error(`google_validate_address_failed:${res.status}`);
+      err.code = `GOOGLE_${res.status}`;
+      throw err;
+    }
+    return res.json();
   });
-  if (!res.ok) {
-    throw new Error(`google_validate_address_failed:${res.status}`);
-  }
-  const json = await res.json();
+
+  const json = await guardedFetch();
   return { result: json?.result || null, responseId: json?.responseId || null };
 }
 

@@ -18,7 +18,19 @@ export async function validateAddressPipeline(payload) {
   const { cleaned } = normalizeAddress(address);
 
   // DPV check (stubbed): evaluate PO Box and missing secondary flags
-  const dpv = await dpvValidate(cleaned, payload?.options);
+  let dpv;
+  try {
+    dpv = await dpvValidate(cleaned, payload?.options);
+  } catch (e) {
+    // Provider down or circuit open; default to non-blocking flags
+    dpv = {
+      deliverable: true,
+      missingSecondary: false,
+      poBox: false,
+      ambiguous: false,
+      providerResponseId: null,
+    };
+  }
   const dpvDecision = mapDpvToAction(dpv, settings);
   if (String(dpvDecision.action).startsWith("BLOCK_")) {
     const dpvResult = {
@@ -154,11 +166,14 @@ export async function validateAddressPipeline(payload) {
       };
     }
   } catch (e) {
-    // Fallback to local heuristic-only path
+    // Provider unavailable or error: degrade quickly to UNVERIFIED using local heuristics
+    const circuitOpen = e && (e.code === "CIRCUIT_OPEN" || String(e?.message || "").includes("CIRCUIT_OPEN"));
     result = {
       status: "ok",
-      action: changed ? "CORRECTED" : "OK",
-      message: changed ? "Applied standard address formatting." : "Stubbed pipeline: address validated.",
+      action: circuitOpen ? "UNVERIFIED" : (changed ? "CORRECTED" : "OK"),
+      message: circuitOpen
+        ? "Provider unavailable; using local heuristics."
+        : (changed ? "Applied standard address formatting." : "Stubbed pipeline: address validated."),
       correctedAddress: corrected,
       dpvFlags: {
         deliverable: !!dpv.deliverable,
@@ -168,7 +183,7 @@ export async function validateAddressPipeline(payload) {
       },
       rooftop: null,
       mapImageUrl: null,
-      confidence: 0.9,
+      confidence: circuitOpen ? 0.5 : 0.9,
       cacheKey: null,
       settings,
       providerResponseId: dpv.providerResponseId || null,
@@ -207,4 +222,3 @@ function isMissingUnitHint(googleResult, inputAddr) {
     return false;
   }
 }
-
