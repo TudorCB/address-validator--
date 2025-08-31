@@ -6,6 +6,7 @@ import AppFrame from "../components/AppFrame.jsx";
 import { getSettings, updateSettings } from "../lib/settings.js";
 import { authenticate } from "../shopify.server";
 import { t } from "../lib/i18n.js";
+import { ToastContext } from "../components/ToastContext.jsx";
 import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
 export const loader = async ({ request }) => {
@@ -60,6 +61,7 @@ export const action = async ({ request }) => {
 export default function SettingsPage() {
   const { settings, saved } = useLoaderData();
   const result = useActionData();
+  const { show } = React.useContext(ToastContext);
 
   const [blockPoBoxes, setBlockPoBoxes] = React.useState(!!settings.blockPoBoxes);
   const [autoApplyCorrections, setAutoApplyCorrections] = React.useState(!!settings.autoApplyCorrections);
@@ -93,11 +95,34 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Simulate failed: ${res.status}`);
       setSim(data);
+      show(t("settings.simulation_impact"));
     } catch (e) {
       console.error(e);
       setSimError(String(e.message || e));
     } finally {
       setSimLoading(false);
+    }
+  }
+
+  async function onResetDefaults() {
+    try {
+      const defaults = { pickupRadiusKm: 25, blockPoBoxes: true, autoApplyCorrections: true, softMode: false, failedDeliveryCostUsd: 12 };
+      const headers = await getAuthorizationHeader();
+      const res = await fetch(endpoints.settingsUpdate(), {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify(defaults),
+      });
+      if (!res.ok) throw new Error(`Reset failed: ${res.status}`);
+      setBlockPoBoxes(defaults.blockPoBoxes);
+      setAutoApplyCorrections(defaults.autoApplyCorrections);
+      setSoftMode(defaults.softMode);
+      setPickupRadiusKm(String(defaults.pickupRadiusKm));
+      setFailedDeliveryCostUsd(String(defaults.failedDeliveryCostUsd));
+      show('Settings reset to defaults.');
+    } catch (e) {
+      console.error(e);
+      alert('Could not reset to defaults.');
     }
   }
 
@@ -235,6 +260,7 @@ export default function SettingsPage() {
                 <input type="hidden" name="softMode" value={softMode ? "on" : "false"} />
                 <Button submit variant="primary" disabled={!!radiusError || !!costError}>{t("settings.save")}</Button>
                 <Button url="/index">{t("settings.cancel")}</Button>
+                <Button tone="critical" onClick={onResetDefaults}>Reset to defaults</Button>
               </InlineStack>
             </Layout.Section>
           </Layout>

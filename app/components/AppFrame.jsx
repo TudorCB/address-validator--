@@ -2,6 +2,7 @@ import { Frame, TopBar, Navigation } from "@shopify/polaris";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "@remix-run/react";
 import { t, getLocale, setLocale, initI18n, availableLocales } from "../lib/i18n.js";
+import { ToastProvider } from "./ToastContext.jsx";
 
 export default function AppFrame({ children }) {
   const [searchActive, setSearchActive] = useState(false);
@@ -101,8 +102,10 @@ export default function AppFrame({ children }) {
   );
 
   return (
-    <Frame topBar={topBarMarkup} navigation={navigationMarkup}>
-      <div style={{ padding: 16 }}>{children}</div>
-    </Frame>
+    <ToastProvider>
+      <Frame topBar={topBarMarkup} navigation={navigationMarkup}>
+        <div style={{ padding: 16 }}>{children}</div>
+      </Frame>
+    </ToastProvider>
   );
 }

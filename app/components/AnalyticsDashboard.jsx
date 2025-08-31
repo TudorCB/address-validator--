@@ -15,6 +15,9 @@ import ClientOnly from "./ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("./StackedAreaChart.client.jsx"));
 import SafeIcon from "./SafeIcon.jsx";
 import { useLocation } from "@remix-run/react";
+import ReactDOM from "react-dom";
+import React from "react";
+import { ToastContext } from "./ToastContext.jsx";
 import { endpoints } from "../lib/api-endpoints.js";
 import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
@@ -53,6 +56,7 @@ function CircularPickupRadiusViz() {
 export default function AnalyticsDashboard() {
   const location = useLocation();
   const search = location?.search || "";
+  const { show } = React.useContext(ToastContext);
   // Filters and local UI state
   const [range, setRange] = React.useState("30d");
   const [segment, setSegment] = React.useState("all");
@@ -66,6 +70,7 @@ export default function AnalyticsDashboard() {
   const [settingsLoaded, setSettingsLoaded] = React.useState(false);
   const [security, setSecurity] = React.useState(null);
   const [providerMetrics, setProviderMetrics] = React.useState(null);
+  const [cacheMetrics, setCacheMetrics] = React.useState(null);
 
   const [auth, setAuth] = React.useState({});
   React.useEffect(() => { (async () => setAuth(await getAuthorizationHeader()))(); }, []);
@@ -97,6 +102,12 @@ export default function AnalyticsDashboard() {
       setProviderMetrics(prov?.provider || prov || null);
     } catch (e) {
       console.error("provider metrics fetch failed", e);
+    }
+    try {
+      const cm = await fetch('/api/analytics/cache', { headers }).then(r => r.json());
+      setCacheMetrics(cm?.cache || null);
+    } catch (e) {
+      console.error('cache metrics fetch failed', e);
     }
   }
 
@@ -230,6 +241,28 @@ export default function AnalyticsDashboard() {
                   <Text>OK: {(providerMetrics?.ok ?? 0).toLocaleString()}</Text>
                   <Text>Fail: {(providerMetrics?.fail ?? 0).toLocaleString()}</Text>
                   <Text>P50: {providerMetrics?.p50 != null ? `${Math.round(providerMetrics.p50)} ms` : '—'}</Text>
+                </InlineStack>
+              </Box>
+            </Box>
+          </Card>
+        </Box>
+
+        {/* Cache Health */}
+        <Box paddingBlockStart="400">
+          <Card>
+            <Box padding="400">
+              <InlineStack align="space-between" blockAlign="center">
+                <Text as="h3" variant="headingMd">Cache health</Text>
+                <Badge tone={(cacheMetrics?.hitRate ?? 0) >= 50 ? "success" : "warning"}>
+                  {cacheMetrics?.hitRate ?? 0}% hit rate
+                </Badge>
+              </InlineStack>
+              <Box paddingBlockStart="300">
+                <InlineStack gap="400">
+                  <Text>Gets: {(cacheMetrics?.get ?? 0).toLocaleString()}</Text>
+                  <Text>Hits: {(cacheMetrics?.hit ?? 0).toLocaleString()}</Text>
+                  <Text>Miss: {(cacheMetrics?.miss ?? 0).toLocaleString()}</Text>
+                  <Text>Sets: {(cacheMetrics?.set ?? 0).toLocaleString()}</Text>
                 </InlineStack>
               </Box>
             </Box>
@@ -380,6 +413,7 @@ export default function AnalyticsDashboard() {
                                     body: JSON.stringify({ blockPoBoxes: next }),
                                   });
                                   if (!res.ok) throw new Error("failed");
+                                  show("PO Box policy updated.");
                                 } catch (err) {
                                   console.error(err);
                                   setPoBoxBlock(prev);
@@ -411,6 +445,7 @@ export default function AnalyticsDashboard() {
                                     body: JSON.stringify({ softMode: !next }),
                                   });
                                   if (!res.ok) throw new Error("failed");
+                                  show("Validation mode updated.");
                                 } catch (err) {
                                   console.error(err);
                                   setEnforceUnit(prev);
@@ -442,6 +477,7 @@ export default function AnalyticsDashboard() {
                                     body: JSON.stringify({ autoApplyCorrections: next }),
                                   });
                                   if (!res.ok) throw new Error("failed");
+                                  show("Auto-apply corrections updated.");
                                 } catch (err) {
                                   console.error(err);
                                   setAutoApply(prev);

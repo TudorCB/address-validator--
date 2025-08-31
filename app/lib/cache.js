@@ -3,18 +3,24 @@
  */
 import { getRedis } from "./redis.js";
 
+const metrics = { get: 0, hit: 0, miss: 0, set: 0 };
+
 const memory = new Map();
 
 export async function cacheGet(key) {
   if (!key) return null;
+  metrics.get++;
   const r = getRedis();
   if (r) {
     try {
       const raw = await r.get(key);
       if (raw == null) return null;
       try {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        metrics.hit++;
+        return parsed;
       } catch {
+        metrics.hit++;
         return raw;
       }
     } catch (e) {
@@ -30,11 +36,13 @@ export async function cacheGet(key) {
     memory.delete(key);
     return null;
   }
+  metrics.hit++;
   return value;
 }
 
 export async function cacheSet(key, value, ttlSeconds = 86400) {
   if (!key) return;
+  metrics.set++;
   const r = getRedis();
   if (r) {
     try {
@@ -53,4 +61,10 @@ export async function cacheSet(key, value, ttlSeconds = 86400) {
 
   const expiresAt = ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : null;
   memory.set(key, { value, expiresAt });
+}
+
+export function snapshotCacheMetrics() {
+  const miss = Math.max(0, metrics.get - metrics.hit);
+  const hitRate = metrics.get > 0 ? Math.round((metrics.hit / metrics.get) * 100) : 0;
+  return { ...metrics, miss, hitRate };
 }

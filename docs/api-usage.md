@@ -96,6 +96,7 @@ curl -s -X PATCH http://localhost:3000/api/settings/update \
 - GET `/api/analytics/summary` → KPIs + daily trends
 - GET `/api/analytics/top-problems` → top by ZIP/city
 - GET `/api/analytics/providers` → provider metrics snapshot `{ provider: { ok, fail, p50 } }`
+- GET `/api/analytics/cache` → cache metrics snapshot `{ cache: { get, hit, miss, set, hitRate } }`
 - POST `/api/analytics/simulate` → what‑if impact of toggles on recent traffic
 
 Example (simulate):
@@ -123,4 +124,3 @@ curl -s -X POST http://localhost:3000/api/analytics/simulate \
 
 - Rate limits: per‑IP and per‑shop; use `RATE_LIMIT_PER_SHOP_MIN` to tune per‑shop minute quota.
 - Dev: use `dev.stub.jwt` only locally. In production, extensions must use real session tokens.
-
