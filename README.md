@@ -12,6 +12,7 @@ Address Validator++ is a Shopify app that validates and normalizes shipping addr
 - Roadmap (v1.1): `docs/roadmap-v1_1.md`
 - Troubleshooting: `docs/troubleshooting.md`
 - Environment & scopes: `docs/env-and-scopes.md`
+- API usage: `docs/api-usage.md`
 
 ## What It Does
 
@@ -159,4 +160,3 @@ npm test
 ---
 
 © Address Validator++ — Remix + Shopify. See `docs/` for acceptance, roadmap, and troubleshooting.
-
