@@ -3,7 +3,7 @@ import { verifySession, extractShopFromAuthHeader } from "../../lib/session-veri
 import { getSettings } from "../../lib/settings.js";
 
 export async function loader({ request }) {
-  const ok = await verifySession(request);
+  const ok = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
   const shop = extractShopFromAuthHeader(request) || "__global__";
   const settings = await getSettings(shop);

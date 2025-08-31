@@ -4,6 +4,7 @@ export const endpoints = {
   analyticsTopProblems: ({ range, segment }) => `/api/analytics/top-problems?range=${encodeURIComponent(range)}&segment=${encodeURIComponent(segment)}`,
   analyticsProviders: () => `/api/analytics/providers`,
   analyticsSimulate: () => `/api/analytics/simulate`,
+  securityStats: () => `/api/security/stats`,
 
   settingsGet: () => `/api/settings`,
   settingsUpdate: () => `/api/settings/update`,
@@ -11,4 +12,3 @@ export const endpoints = {
   pickupsList: () => `/api/pickups`,
   pickupById: (id) => `/api/pickups/${encodeURIComponent(id)}`,
 };
-

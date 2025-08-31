@@ -29,7 +29,7 @@ function computeStatus(action) {
 }
 
 export async function loader({ request }) {
-  const ok = await verifySession(request);
+  const ok = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
 
   const { since, segment, q } = parseFilters(request);

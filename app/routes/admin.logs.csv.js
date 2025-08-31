@@ -23,7 +23,7 @@ function esc(v) {
 }
 
 export async function loader({ request }) {
-  const ok = await verifySession(request);
+  const ok = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
   if (!ok) {
     return new Response("unauthorized", { status: 401 });
   }

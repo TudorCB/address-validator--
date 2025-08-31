@@ -27,7 +27,7 @@ function applyToggles(originalAction, toggles = {}) {
 }
 
 export async function action({ request }) {
-  const ok = await verifySession(request);
+  const ok = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, { status: 405 });
   try {
@@ -61,4 +61,3 @@ export async function action({ request }) {
 }
 
 export const loader = () => new Response("Not Found", { status: 404 });
-

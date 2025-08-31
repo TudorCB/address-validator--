@@ -15,7 +15,7 @@ export async function action({ request }) {
   if (!ipRate.allowed) return json({ error: "rate_limited", resetAt: ipRate.resetAt }, { status: 429 });
 
   try {
-    const authorized = await verifySession(request);
+    const authorized = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
     if (!authorized) return json({ error: "unauthorized" }, { status: 401 });
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, { status: 405 });
 

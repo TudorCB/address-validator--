@@ -3,7 +3,7 @@ import { verifySession, extractShopFromAuthHeader } from "../../lib/session-veri
 import { updateSettings, getSettings } from "../../lib/settings.js";
 
 export async function action({ request }) {
-  const ok = await verifySession(request);
+  const ok = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
   if (request.method !== "PATCH") return json({ error: "method_not_allowed" }, { status: 405 });
 

@@ -15,7 +15,7 @@ export async function action({ request }) {
   let contextSource = null;
   let meta = {};
   try {
-    const authorized = await verifySession(request);
+    const authorized = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
     if (!authorized) return json({ error: "unauthorized" }, { status: 401 });
 
     if (request.method !== "POST") {

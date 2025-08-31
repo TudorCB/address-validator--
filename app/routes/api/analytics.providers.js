@@ -3,10 +3,9 @@ import { verifySession } from "../../lib/session-verify.js";
 import { snapshotMetrics } from "../../lib/metrics.js";
 
 export async function loader({ request }) {
-  const ok = await verifySession(request);
+  const ok = await verifySession(request, { expectedAud: process.env.SHOPIFY_API_KEY });
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
   return json(snapshotMetrics());
 }
 
 export const action = () => new Response("Not Found", { status: 404 });
-

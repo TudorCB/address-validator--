@@ -60,6 +60,7 @@ export default function AnalyticsDashboard() {
   const [summary, setSummary] = React.useState(null);
   const [problems, setProblems] = React.useState({ topByZip: [], topByCity: [] });
   const [settingsLoaded, setSettingsLoaded] = React.useState(false);
+  const [security, setSecurity] = React.useState(null);
 
   const token = "dev.stub.jwt"; // accepted by session-verify in dev
 
@@ -78,6 +79,12 @@ export default function AnalyticsDashboard() {
     const p = await fetch(endpoints.analyticsTopProblems({ range, segment }), { headers }).then((r) => r.json());
     setSummary(s);
     setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
+    try {
+      const sec = await fetch(endpoints.securityStats(), { headers }).then((r) => r.json());
+      setSecurity(sec?.stats || null);
+    } catch (e) {
+      console.error("security stats fetch failed", e);
+    }
   }
 
   async function fetchSettings() {
@@ -177,6 +184,23 @@ export default function AnalyticsDashboard() {
             />
           </Grid.Cell>
         </Grid>
+
+        {/* Security Stats */}
+        <Box paddingBlockStart="400">
+          <Card>
+            <Box padding="400">
+              <Text as="h3" variant="headingMd">Security (last 24h)</Text>
+              <Box paddingBlockStart="300">
+                <InlineStack gap="400">
+                  <Text>Total: {(security?.total ?? 0).toLocaleString()}</Text>
+                  <Text>OK: {(security?.ok ?? 0).toLocaleString()}</Text>
+                  <Text>Fail: {Object.values(security?.fail || {}).reduce((a,b)=>a+Number(b||0),0).toLocaleString()}</Text>
+                  <Text tone="subdued">expired: {security?.fail?.expired ?? 0}, badsig: {security?.fail?.badsig ?? 0}</Text>
+                </InlineStack>
+              </Box>
+            </Box>
+          </Card>
+        </Box>
 
         {/* Validation Trend */}
         <Box paddingBlockStart="400">
@@ -376,4 +400,3 @@ export default function AnalyticsDashboard() {
     </Box>
   );
 }
-
