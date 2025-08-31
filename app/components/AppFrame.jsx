@@ -102,10 +102,10 @@ export default function AppFrame({ children }) {
   );
 
   return (
-    <ToastProvider>
-      <Frame topBar={topBarMarkup} navigation={navigationMarkup}>
+    <Frame topBar={topBarMarkup} navigation={navigationMarkup}>
+      <ToastProvider>
         <div style={{ padding: 16 }}>{children}</div>
-      </Frame>
-    </ToastProvider>
+      </ToastProvider>
+    </Frame>
   );
 }
