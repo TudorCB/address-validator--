@@ -61,6 +61,7 @@ export default function AnalyticsDashboard() {
   const [problems, setProblems] = React.useState({ topByZip: [], topByCity: [] });
   const [settingsLoaded, setSettingsLoaded] = React.useState(false);
   const [security, setSecurity] = React.useState(null);
+  const [providerMetrics, setProviderMetrics] = React.useState(null);
 
   const token = "dev.stub.jwt"; // accepted by session-verify in dev
 
@@ -84,6 +85,13 @@ export default function AnalyticsDashboard() {
       setSecurity(sec?.stats || null);
     } catch (e) {
       console.error("security stats fetch failed", e);
+    }
+    try {
+      const prov = await fetch(endpoints.analyticsProviders(), { headers }).then((r) => r.json());
+      // normalize to provider object
+      setProviderMetrics(prov?.provider || prov || null);
+    } catch (e) {
+      console.error("provider metrics fetch failed", e);
     }
   }
 
@@ -138,7 +146,7 @@ export default function AnalyticsDashboard() {
         <InlineStack align="space-between" blockAlign="center">
           <InlineStack gap="200" blockAlign="center">
             <div style={{ width: 36, height: 36, borderRadius: 8, background: '#00A047', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <SafeIcon name="StoreMajor" />
+              <SafeIcon name="StoreIcon" />
             </div>
             <Text as="h1" variant="headingLg">Address Validator ++</Text>
           </InlineStack>
@@ -164,7 +172,7 @@ export default function AnalyticsDashboard() {
               title="Validations"
               value={(k.totalValidations ?? 0).toLocaleString()}
               subtitle="Total"
-              icon={<SafeIcon name="ChecklistMajor" />}
+              icon={<SafeIcon name="ClipboardChecklistIcon" />}
             />
           </Grid.Cell>
           <Grid.Cell>
@@ -172,7 +180,7 @@ export default function AnalyticsDashboard() {
               title="Savings"
               value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`}
               subtitle="Estimated"
-              icon={<SafeIcon name="CashDollarMajor" />}
+              icon={<SafeIcon name="CashDollarIcon" />}
             />
           </Grid.Cell>
           <Grid.Cell>
@@ -180,7 +188,7 @@ export default function AnalyticsDashboard() {
               title="Blocked"
               value={(k.blocked ?? 0).toLocaleString()}
               subtitle="Hard gated"
-              icon={<SafeIcon name="RiskMajor" />}
+              icon={<SafeIcon name="AlertTriangleIcon" />}
             />
           </Grid.Cell>
         </Grid>
@@ -196,6 +204,27 @@ export default function AnalyticsDashboard() {
                   <Text>OK: {(security?.ok ?? 0).toLocaleString()}</Text>
                   <Text>Fail: {Object.values(security?.fail || {}).reduce((a,b)=>a+Number(b||0),0).toLocaleString()}</Text>
                   <Text tone="subdued">expired: {security?.fail?.expired ?? 0}, badsig: {security?.fail?.badsig ?? 0}</Text>
+                </InlineStack>
+              </Box>
+            </Box>
+          </Card>
+        </Box>
+
+        {/* Provider Health */}
+        <Box paddingBlockStart="400">
+          <Card>
+            <Box padding="400">
+              <InlineStack align="space-between" blockAlign="center">
+                <Text as="h3" variant="headingMd">Provider health</Text>
+                <Badge tone={(providerMetrics?.fail ?? 0) > 0 ? "warning" : "success"}>
+                  {((providerMetrics?.ok ?? 0) + (providerMetrics?.fail ?? 0)) || 0} calls
+                </Badge>
+              </InlineStack>
+              <Box paddingBlockStart="300">
+                <InlineStack gap="400">
+                  <Text>OK: {(providerMetrics?.ok ?? 0).toLocaleString()}</Text>
+                  <Text>Fail: {(providerMetrics?.fail ?? 0).toLocaleString()}</Text>
+                  <Text>P50: {providerMetrics?.p50 != null ? `${Math.round(providerMetrics.p50)} ms` : '—'}</Text>
                 </InlineStack>
               </Box>
             </Box>
