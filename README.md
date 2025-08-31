@@ -199,3 +199,33 @@ Acceptance smoke
  Per-shop rate-limit returns 429 with resetAt
 
  Analytics totals/trends match seeded data
+
+
+ How to run (local / staging)
+# Ensure your Remix app is running (and allows dev stub tokens)
+export SESSION_TOKEN_ALLOW_DEV_STUB=true
+npm run dev
+
+# In another terminal:
+export APP_URL="http://localhost:3000"
+export DEV_STUB_TOKEN="dev.stub.jwt"
+export SHOP_DOMAIN="demo-shop.myshopify.com"
+
+node scripts/seed-demo-logs.js --logs 250 --days 14
+
+
+Now open /analytics:
+
+You should see KPIs, trend chart, insights, top ZIP/City tables populated.
+
+CSV export works with your current filters.
+
+To reseed, just rerun the script; your analytics will update accordingly.
+
+🔒 Safety reminders
+
+Never use the seed script (with stub token) against production.
+
+Turn strict JWT on in production (SESSION_TOKEN_ALLOW_DEV_STUB=false) and switch any automation to real App Bridge tokens.
+
+Keep Redis enabled in staging/prod so rate limits and cache behave like real deployments.
