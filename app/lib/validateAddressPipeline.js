@@ -1,17 +1,15 @@
 import { validateWithGoogle, extractLatLng, buildStaticMapUrl, normalizedFromGoogle } from "./google.js";
 import { normalizeAddress } from "./address-normalize.js";
 import { getSettings } from "./settings.js";
-
-function isPoBox(addressLine = "") {
-  return /^P(?:OST)?\.?\s*O(?:FFICE)?\.?\s*BOX\b/i.test(String(addressLine).trim());
-}
+import { dpvValidate, mapDpvToAction } from "./dpv.js";
 
 /**
- * Minimal pipeline stub:
+ * Minimal pipeline with DPV integration:
  * - Normalize address
- * - Optionally block PO Boxes
- * - Pretend Google validation succeeds
- * - Apply softMode downgrade if enabled
+ * - Run DPV (stub) to detect PO Box / missing unit
+ * - If DPV blocks, return early (respect softMode)
+ * - Otherwise, run Google for correction + rooftop
+ * - Merge DPV flags into final result
  */
 export async function validateAddressPipeline(payload) {
   const shop = payload?.context?.shopDomain || "__global__";
@@ -19,26 +17,34 @@ export async function validateAddressPipeline(payload) {
   const address = payload?.address || null;
   const { cleaned } = normalizeAddress(address);
 
-  // PO Box rule (server-side)
-  if (settings.blockPoBoxes && isPoBox(cleaned.address1)) {
-    const base = {
+  // DPV check (stubbed): evaluate PO Box and missing secondary flags
+  const dpv = await dpvValidate(cleaned, payload?.options);
+  const dpvDecision = mapDpvToAction(dpv, settings);
+  if (String(dpvDecision.action).startsWith("BLOCK_")) {
+    const dpvResult = {
       status: "ok",
-      action: "BLOCK_PO_BOX",
-      message: "PO Boxes are not accepted for shipping.",
+      action: dpvDecision.action,
+      message: dpvDecision.message,
       correctedAddress: cleaned,
-      dpvFlags: { deliverable: false, poBox: true },
+      dpvFlags: {
+        deliverable: !!dpv.deliverable,
+        missingSecondary: !!dpv.missingSecondary,
+        poBox: !!dpv.poBox,
+        ambiguous: !!dpv.ambiguous,
+      },
       rooftop: null,
       mapImageUrl: null,
       confidence: 0.9,
       cacheKey: null,
       settings,
+      providerResponseId: dpv.providerResponseId || null,
     };
     // Soft mode transforms hard blocks into warnings
     if (settings.softMode) {
-      base.action = "UNVERIFIED";
-      base.message = "PO Box detected. Proceeding in soft mode; please confirm your address.";
+      dpvResult.action = "UNVERIFIED";
+      dpvResult.message = "Soft mode enabled - validation warnings only.";
     }
-    return base;
+    return dpvResult;
   }
 
   // Lightweight normalization/correction step (demo)
@@ -110,13 +116,18 @@ export async function validateAddressPipeline(payload) {
           ? "Apartment/Unit appears required. Proceeding in soft mode; please confirm."
           : "Apartment/Unit appears required for delivery.",
         correctedAddress: fromGoogle,
-        dpvFlags: { deliverable: false, missingUnit: true },
+        dpvFlags: {
+          deliverable: !!dpv.deliverable,
+          missingSecondary: !!dpv.missingSecondary,
+          poBox: !!dpv.poBox,
+          ambiguous: !!dpv.ambiguous,
+        },
         rooftop: rooftop || null,
         mapImageUrl,
         confidence: 0.8,
         cacheKey: null,
         settings,
-        providerResponseId: g?.responseId || null,
+        providerResponseId: dpv.providerResponseId || null,
       };
     } else {
       result = {
@@ -128,13 +139,18 @@ export async function validateAddressPipeline(payload) {
           ? "Address validated by Google."
           : "Address not fully verified. Please confirm details.",
         correctedAddress: fromGoogle,
-        dpvFlags: { deliverable: !!deliverable },
+        dpvFlags: {
+          deliverable: !!dpv.deliverable,
+          missingSecondary: !!dpv.missingSecondary,
+          poBox: !!dpv.poBox,
+          ambiguous: !!dpv.ambiguous,
+        },
         rooftop: rooftop || null,
         mapImageUrl,
         confidence: deliverable ? 0.95 : 0.7,
         cacheKey: null,
         settings,
-        providerResponseId: g?.responseId || null,
+        providerResponseId: dpv.providerResponseId || null,
       };
     }
   } catch (e) {
@@ -144,20 +160,25 @@ export async function validateAddressPipeline(payload) {
       action: changed ? "CORRECTED" : "OK",
       message: changed ? "Applied standard address formatting." : "Stubbed pipeline: address validated.",
       correctedAddress: corrected,
-      dpvFlags: { deliverable: true },
+      dpvFlags: {
+        deliverable: !!dpv.deliverable,
+        missingSecondary: !!dpv.missingSecondary,
+        poBox: !!dpv.poBox,
+        ambiguous: !!dpv.ambiguous,
+      },
       rooftop: null,
       mapImageUrl: null,
       confidence: 0.9,
       cacheKey: null,
       settings,
-      providerResponseId: null,
+      providerResponseId: dpv.providerResponseId || null,
     };
   }
 
   // Soft mode post-process: if ever BLOCK_* is returned, downgrade here
   if (settings.softMode && String(result.action).startsWith("BLOCK_")) {
     result.action = "UNVERIFIED";
-    result.message = "Soft mode enabled — validation warnings only.";
+    result.message = "Soft mode enabled - validation warnings only.";
   }
   return result;
 }
@@ -186,3 +207,4 @@ function isMissingUnitHint(googleResult, inputAddr) {
     return false;
   }
 }
+

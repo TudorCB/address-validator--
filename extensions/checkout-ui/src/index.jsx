@@ -39,6 +39,7 @@ function View({ state, onAcceptSuggestion }) {
   if (!state.response) return null;
 
   const { action, message, correctedAddress } = state.response;
+  const writebackError = state.writebackError;
 
   const level =
     action === "OK" ? "success"
@@ -64,6 +65,11 @@ function View({ state, onAcceptSuggestion }) {
           </BlockStack>
         ) : null}
       </Banner>
+      {writebackError ? (
+        <Banner status="warning">
+          <Text>{writebackError}</Text>
+        </Banner>
+      ) : null}
     </BlockStack>
   );
 }
@@ -76,6 +82,7 @@ function CheckoutAddressValidator() {
   const [settings, setSettings] = useState(null);
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [writebackError, setWritebackError] = useState(null);
   const mounted = useRef(true);
 
   const addr = useMemo(() => ({
@@ -127,6 +134,8 @@ function CheckoutAddressValidator() {
   async function validateNow() {
     try {
       setLoading(true);
+      // Clear prior writeback error before a new validation cycle
+      setWritebackError(null);
       const token = await api.sessionToken.get();
       const res = await fetch("/api/validate-address", {
         method: "POST",
@@ -143,18 +152,24 @@ function CheckoutAddressValidator() {
 
       // Auto-apply correction (server-authoritative) if enabled
       const autoApply = (json?.settings?.autoApplyCorrections ?? settings?.autoApplyCorrections) === true;
-      if (autoApply && json?.action === "CORRECTED" && json?.correctedAddress && applyShippingAddressChange) {
-        await applyShippingAddressChange({
-          type: "updateShippingAddress",
-          address: {
-            address1: json.correctedAddress.address1 || undefined,
-            address2: json.correctedAddress.address2 || undefined,
-            city: json.correctedAddress.city || undefined,
-            provinceCode: json.correctedAddress.province || json.correctedAddress.provinceCode || undefined,
-            postalCode: json.correctedAddress.zip || undefined,
-            countryCode: json.correctedAddress.country || undefined,
-          },
-        });
+      if (autoApply && json?.action === "CORRECTED" && json?.correctedAddress) {
+        try {
+          if (!applyShippingAddressChange) throw new Error("applyShippingAddressChange unavailable");
+          await applyShippingAddressChange({
+            type: "updateShippingAddress",
+            address: {
+              address1: json.correctedAddress.address1 || undefined,
+              address2: json.correctedAddress.address2 || undefined,
+              city: json.correctedAddress.city || undefined,
+              provinceCode: json.correctedAddress.province || json.correctedAddress.provinceCode || undefined,
+              postalCode: json.correctedAddress.zip || undefined,
+              countryCode: json.correctedAddress.country || undefined,
+            },
+          });
+        } catch (e) {
+          console.warn("[checkout-ui] auto-apply failed", e);
+          setWritebackError("We couldn't apply the suggestion automatically (wallet or restricted checkout). Please edit the fields manually.");
+        }
       }
     } catch (e) {
       console.error("[checkout-ui] validate error", e);
@@ -171,7 +186,8 @@ function CheckoutAddressValidator() {
   async function acceptSuggestion() {
     try {
       const corrected = response?.correctedAddress;
-      if (!corrected || !applyShippingAddressChange) return;
+      if (!corrected) return;
+      if (!applyShippingAddressChange) throw new Error("applyShippingAddressChange unavailable");
       await applyShippingAddressChange({
         type: "updateShippingAddress",
         address: {
@@ -183,13 +199,16 @@ function CheckoutAddressValidator() {
           countryCode: corrected.country || undefined,
         },
       });
+      // Clear error if a manual accept succeeded
+      setWritebackError(null);
       await validateNow();
     } catch (e) {
       console.error("[checkout-ui] applyShippingAddressChange failed", e);
+      setWritebackError("We couldn't apply the suggestion automatically (wallet or restricted checkout). Please edit the fields manually.");
     }
   }
 
-  return <View state={{ response, loading }} onAcceptSuggestion={acceptSuggestion} />;
+  return <View state={{ response, loading, writebackError }} onAcceptSuggestion={acceptSuggestion} />;
 }
 
 export default reactExtension(
