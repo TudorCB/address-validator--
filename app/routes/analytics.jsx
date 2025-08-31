@@ -94,15 +94,17 @@ export default function AnalyticsPage() {
   const [summary, setSummary] = React.useState(null);
   const [insights, setInsights] = React.useState([]);
   const [problems, setProblems] = React.useState({ topByZip: [], topByCity: [] });
+  const [providerMetrics, setProviderMetrics] = React.useState(null);
 
   async function fetchAll() {
     try {
       setIsLoading(true);
       const headers = { authorization: "Bearer dev.stub.jwt" }; // TODO: replace with real session token
-      const [s, i, p] = await Promise.all([
+      const [s, i, p, pm] = await Promise.all([
         fetch(`/api/analytics.summary?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
         fetch(`/api/analytics.recommendations?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
         fetch(`/api/analytics.top-problems?range=${range}&segment=${segment}`, { headers }).then(r => r.json()),
+        fetch(`/api/analytics.providers`, { headers }).then(r => r.json()),
       ]);
 
       // attach quick toggles
@@ -116,6 +118,7 @@ export default function AnalyticsPage() {
       setSummary(s);
       setInsights(enriched);
       setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
+      setProviderMetrics(pm || null);
       const total = s?.kpis?.totalValidations ?? 0;
       setHasData(total > 0);
     } catch (e) {
@@ -250,6 +253,35 @@ export default function AnalyticsPage() {
 
           {!isLoading && hasData ? (
             <>
+              {/* Provider health widget */}
+              <Layout.Section oneThird>
+                <Card>
+                  <div style={{ padding: 16 }}>
+                    <Text as="h3" variant="headingMd">Provider health</Text>
+                    {providerMetrics ? (
+                      <div style={{ marginTop: 8, color: "#434343" }}>
+                        {(() => {
+                          const ok = providerMetrics?.provider?.ok || 0;
+                          const fail = providerMetrics?.provider?.fail || 0;
+                          const total = ok + fail;
+                          const successRate = total ? Math.round((ok / total) * 100) : 100;
+                          const fallbackRate = total ? Math.round((fail / total) * 100) : 0;
+                          const p50 = providerMetrics?.provider?.p50;
+                          return (
+                            <div>
+                              <div><b>Success rate:</b> {successRate}%</div>
+                              <div><b>p50 latency:</b> {p50 != null ? `${p50} ms` : "n/a"}</div>
+                              <div><b>Fallback rate:</b> {fallbackRate}%</div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 8, color: "#616161" }}>No provider data yet.</div>
+                    )}
+                  </div>
+                </Card>
+              </Layout.Section>
               <Layout.Section oneThird>
                 <Kpi title="Total validations" value={k.totalValidations ?? 0} help="All address checks across sources." />
               </Layout.Section>

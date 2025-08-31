@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { withRetry, withCircuitBreaker } from "./http-retry.js";
+import { recordProvider } from "./metrics.js";
 
 /**
  * Google Address Validation API.
@@ -67,8 +68,15 @@ export async function validateWithGoogle(address) {
     return res.json();
   });
 
-  const json = await guardedFetch();
-  return { result: json?.result || null, responseId: json?.responseId || null };
+  const start = Date.now();
+  try {
+    const json = await guardedFetch();
+    recordProvider(true, Date.now() - start);
+    return { result: json?.result || null, responseId: json?.responseId || null };
+  } catch (e) {
+    recordProvider(false, Date.now() - start);
+    throw e;
+  }
 }
 
 export function extractLatLng(result) {

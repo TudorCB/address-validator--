@@ -1,4 +1,5 @@
 import { withRetry, withCircuitBreaker } from "./http-retry.js";
+import { recordProvider } from "./metrics.js";
 
 /**
  * DPV adapter facade. In production, call USPS/UPS APIs here.
@@ -27,7 +28,15 @@ export async function dpvValidate(address, { carriers = ["USPS"], timeoutMs = 25
   };
 
   const guarded = withCircuitBreaker(() => withRetry(compute, { retries: 2, baseDelayMs: 200 }));
-  return guarded();
+  const start = Date.now();
+  try {
+    const out = await guarded();
+    recordProvider(true, Date.now() - start);
+    return out;
+  } catch (e) {
+    recordProvider(false, Date.now() - start);
+    throw e;
+  }
 }
 
 export function mapDpvToAction(flags, settings) {
