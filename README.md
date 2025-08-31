@@ -4,7 +4,7 @@ Address Validator++ is a Shopify app that validates and normalizes shipping addr
 
 • Admin UI: Polaris dashboard, analytics, settings, and pickup management
 • Extensions: Checkout UI, Thank‑you, and Customer Account surfaces
-• Server: Validation pipeline (DPV stub + Google), rate limiting, JWT token verification, logging, and analytics APIs
+• Server: Validation pipeline (DPV via USPS/EasyPost/Shippo + Google), rate limiting, JWT token verification, logging, and analytics APIs
 
 ## Project Docs
 
@@ -18,7 +18,7 @@ Address Validator++ is a Shopify app that validates and normalizes shipping addr
 
 - Validates addresses during checkout and other surfaces using a pipeline that:
   - Normalizes the input (street suffix casing, ZIP capitalization, etc.).
-  - Runs a DPV-style check (stubbed provider) to detect PO Boxes and missing apartment/unit.
+  - Runs a DPV-style check (USPS/EasyPost/Shippo or stub) to detect PO Boxes and missing apartment/unit.
   - Optionally calls Google Address Validation for rooftop‑level signals and suggested formatting (falls back gracefully if not configured).
   - Applies merchant rules: hard block vs soft mode, auto‑apply corrections, suggest store pickup when in range.
 - Captures non‑PII logs for analytics (action, ZIP/city/province/country, timestamps, provider response id).
@@ -139,7 +139,7 @@ npm test
 - Shopify bootstrap: `app/shopify.server.js`
 - Validation pipeline: `app/lib/validateAddressPipeline.js`
 - Google adapter: `app/lib/google.js`
-- DPV stub: `app/lib/dpv.js`
+- DPV facade: `app/lib/dpv.js` (providers in `app/lib/dpv.providers/*`)
 - Settings & pickups: `app/lib/settings.js`, `app/lib/pickups.js`
 - Session verify: `app/lib/session-verify.js`
 - Admin UI: `app/components/AnalyticsDashboard.jsx`, `app/components/AppFrame.jsx`, `app/routes/analytics.jsx`, `app/routes/settings.jsx`, `app/routes/pickups.jsx`, `app/routes/index.jsx`
@@ -153,7 +153,26 @@ npm test
 
 ## Limitations / Current State
 
-- DPV is a stubbed adapter; integrate USPS/UPS in production.
+- DPV supports USPS Web Tools, EasyPost, and Shippo. Configure `DPV_PROVIDER` and credentials in `.env`.
+
+### DPV Providers (configuration)
+
+Add to `.env`:
+
+```
+# Choose one: "usps" | "easypost" | "shippo" | "stub"
+DPV_PROVIDER=usps
+DPV_TIMEOUT_MS=3000
+
+# USPS Web Tools (US-only DPV)
+USPS_WEBTOOLS_USERID=YOUR_USPS_USERID
+
+# EasyPost (global coverage; DPV for US)
+EASYPOST_API_KEY=EASYPOST_...
+
+# Shippo alternative (optional)
+SHIPPO_API_TOKEN=shippo_live_...
+```
 - Google Address Validation is optional; the app falls back to heuristics if unavailable.
 - Dev environments can use the stub token; configure `SESSION_TOKEN_ALLOW_DEV_STUB=false` to harden.
 

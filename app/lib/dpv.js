@@ -1,33 +1,45 @@
+import { uspsDpv } from "./dpv.providers/usps.js";
+import { easypostDpv } from "./dpv.providers/easypost.js";
+import { shippoDpv } from "./dpv.providers/shippo.js";
+import { recordProvider } from "./metrics.js";
+
 /**
- * DPV facade. Replace 'stubDpv' with USPS/UPS implementations.
- * Return shape is provider-agnostic.
+ * Unified DPV interface.
+ * Returns: { flags: { deliverable, missingSecondary, ambiguous, poBox }, normalized, provider, providerResponseId, raw }
  */
-export async function dpvValidate(address, { provider = "stub", timeoutMs = 2500 } = {}) {
-  if (provider === "stub") return stubDpv(address);
-  // In production: branch here to USPS/UPS modules, with timeouts & retries
-  return stubDpv(address);
+export async function dpvValidate(address, opts = {}) {
+  const timeoutMs = Number(process.env.DPV_TIMEOUT_MS || 3000);
+  const provider = String(process.env.DPV_PROVIDER || "stub").toLowerCase();
+
+  const start = Date.now();
+  try {
+    let result;
+    if (provider === "usps") result = await uspsDpv(address, { timeoutMs, ...opts });
+    else if (provider === "easypost") result = await easypostDpv(address, { timeoutMs, ...opts });
+    else if (provider === "shippo") result = await shippoDpv(address, { timeoutMs, ...opts });
+    else result = stubDpv(address);
+    recordProvider(true, Date.now() - start);
+    return result;
+  } catch (e) {
+    recordProvider(false, Date.now() - start);
+    // degrade to stubbed heuristics on failure
+    return stubDpv(address);
+  }
 }
 
 function stubDpv(address = {}) {
-  const a1 = String(address.address1 || "").toUpperCase();
-  const addr2 = String(address.address2 || "");
-
-  const poBox = /^P(?:OST)?\.?\s*O(?:FFICE)?\.?\s*BOX\b/.test(a1);
-  // naive multi-unit heuristics for stub only
-  const looksMulti = /\b(APT|UNIT|SUITE|STE|BLDG|FL|FLOOR|#)\b/.test(a1);
-  const hasSecondary = /\S/.test(addr2);
+  const a1 = String(address?.address1 || "");
+  const poBox = /^P(?:OST)?\.?\s*O(?:FFICE)?\.?\s*BOX\b/i.test(a1);
+  const looksMulti = /\b(APT|UNIT|SUITE|STE|BLDG|FL|FLOOR|#)\b/i.test(a1);
+  const hasSecondary = /\S/.test(String(address?.address2 || ""));
   const missingSecondary = looksMulti && !hasSecondary;
 
   return {
-    deliverable: !poBox,                 // stub: PO Box => not deliverable for ground
-    missingSecondary,                    // Apt/Unit required
-    poBox,
-    ambiguous: false,
-    vacant: false,
-    cmra: false,
+    flags: { deliverable: !poBox, missingSecondary, ambiguous: false, poBox },
+    normalized: { ...address },
     provider: "stub",
     providerResponseId: `stub-${Date.now()}`,
-    meta: {}
+    raw: {},
   };
 }
 

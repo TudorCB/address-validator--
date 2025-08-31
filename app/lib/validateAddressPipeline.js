@@ -18,22 +18,20 @@ export async function validateAddressPipeline(payload) {
   const address = payload?.address || null;
   const { cleaned } = normalizeAddress(address);
 
-  // DPV check (stubbed): evaluate PO Box and missing secondary flags
+  // DPV check (provider-backed or stub): evaluate PO Box and missing secondary flags
   let dpv;
   try {
-    dpv = await dpvValidate(cleaned, { provider: process.env.DPV_PROVIDER || "stub" });
+    dpv = await dpvValidate(cleaned);
   } catch (e) {
     // Provider down or circuit open; default to non-blocking flags
     dpv = {
-      deliverable: true,
-      missingSecondary: false,
-      poBox: false,
-      ambiguous: false,
+      flags: { deliverable: true, missingSecondary: false, poBox: false, ambiguous: false },
+      normalized: cleaned,
       provider: null,
       providerResponseId: null,
     };
   }
-  const dpvDecision = mapDpvToAction(dpv, settings);
+  const dpvDecision = mapDpvToAction(dpv.flags || {}, settings);
   if (String(dpvDecision.action).startsWith("BLOCK_")) {
     // Special handling: when undeliverable, suggest nearest pickup if within range
     if (dpvDecision.action === "BLOCK_UNDELIVERABLE") {
@@ -49,12 +47,12 @@ export async function validateAddressPipeline(payload) {
             status: "ok",
             action: "SUGGEST_PICKUP",
             message: `Nearest pickup is ~${distanceKm.toFixed(2)} km: ${nearest.name}`,
-            correctedAddress: cleaned,
+            correctedAddress: dpv.normalized || cleaned,
           dpvFlags: {
-            deliverable: !!dpv.deliverable,
-            missingSecondary: !!dpv.missingSecondary,
-            poBox: !!dpv.poBox,
-            ambiguous: !!dpv.ambiguous,
+            deliverable: !!dpv.flags?.deliverable,
+            missingSecondary: !!dpv.flags?.missingSecondary,
+            poBox: !!dpv.flags?.poBox,
+            ambiguous: !!dpv.flags?.ambiguous,
           },
           provider: dpv.provider || null,
           rooftop: rooftop || null,
@@ -75,12 +73,12 @@ export async function validateAddressPipeline(payload) {
       status: "ok",
       action: dpvDecision.action,
       message: dpvDecision.message,
-      correctedAddress: cleaned,
+      correctedAddress: dpv.normalized || cleaned,
       dpvFlags: {
-        deliverable: !!dpv.deliverable,
-        missingSecondary: !!dpv.missingSecondary,
-        poBox: !!dpv.poBox,
-        ambiguous: !!dpv.ambiguous,
+        deliverable: !!dpv.flags?.deliverable,
+        missingSecondary: !!dpv.flags?.missingSecondary,
+        poBox: !!dpv.flags?.poBox,
+        ambiguous: !!dpv.flags?.ambiguous,
       },
       provider: dpv.provider || null,
       rooftop: null,
@@ -166,12 +164,12 @@ export async function validateAddressPipeline(payload) {
         message: settings.softMode
           ? "Apartment/Unit appears required. Proceeding in soft mode; please confirm."
           : "Apartment/Unit appears required for delivery.",
-        correctedAddress: fromGoogle,
+        correctedAddress: preferAddress(dpv.normalized, fromGoogle, cleaned),
         dpvFlags: {
-          deliverable: !!dpv.deliverable,
-          missingSecondary: !!dpv.missingSecondary,
-          poBox: !!dpv.poBox,
-          ambiguous: !!dpv.ambiguous,
+          deliverable: !!dpv.flags?.deliverable,
+          missingSecondary: !!dpv.flags?.missingSecondary,
+          poBox: !!dpv.flags?.poBox,
+          ambiguous: !!dpv.flags?.ambiguous,
         },
         provider: dpv.provider || null,
         rooftop: rooftop || null,
@@ -190,12 +188,12 @@ export async function validateAddressPipeline(payload) {
           : deliverable
           ? "Address validated by Google."
           : "Address not fully verified. Please confirm details.",
-        correctedAddress: fromGoogle,
+        correctedAddress: preferAddress(dpv.normalized, fromGoogle, cleaned),
         dpvFlags: {
-          deliverable: !!dpv.deliverable,
-          missingSecondary: !!dpv.missingSecondary,
-          poBox: !!dpv.poBox,
-          ambiguous: !!dpv.ambiguous,
+          deliverable: !!dpv.flags?.deliverable,
+          missingSecondary: !!dpv.flags?.missingSecondary,
+          poBox: !!dpv.flags?.poBox,
+          ambiguous: !!dpv.flags?.ambiguous,
         },
         provider: dpv.provider || null,
         rooftop: rooftop || null,
@@ -215,12 +213,12 @@ export async function validateAddressPipeline(payload) {
       message: circuitOpen
         ? "Provider unavailable; using local heuristics."
         : (changed ? "Applied standard address formatting." : "Stubbed pipeline: address validated."),
-      correctedAddress: corrected,
+      correctedAddress: preferAddress(dpv.normalized, corrected, cleaned),
       dpvFlags: {
-        deliverable: !!dpv.deliverable,
-        missingSecondary: !!dpv.missingSecondary,
-        poBox: !!dpv.poBox,
-        ambiguous: !!dpv.ambiguous,
+        deliverable: !!dpv.flags?.deliverable,
+        missingSecondary: !!dpv.flags?.missingSecondary,
+        poBox: !!dpv.flags?.poBox,
+        ambiguous: !!dpv.flags?.ambiguous,
       },
       provider: dpv.provider || null,
       rooftop: null,
@@ -262,5 +260,14 @@ function isMissingUnitHint(googleResult, inputAddr) {
     return false;
   } catch {
     return false;
+  }
+}
+
+function preferAddress(primary, secondary, fallback) {
+  try {
+    const pick = (obj) => (obj && typeof obj === "object" && Object.keys(obj).length ? obj : null);
+    return pick(primary) || pick(secondary) || fallback || null;
+  } catch {
+    return fallback || null;
   }
 }
