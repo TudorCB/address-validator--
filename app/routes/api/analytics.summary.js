@@ -25,7 +25,7 @@ export async function loader({ request }) {
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
 
   const { days, since, segment } = parseFilters(request);
-  const logs = readLogs({ limit: 5000 }).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
+  const logs = (await readLogs({ limit: 5000 })).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
   const total = logs.length;
 
   const okCount = logs.filter((l) => l.action === "OK").length;

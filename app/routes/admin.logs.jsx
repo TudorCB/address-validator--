@@ -4,7 +4,7 @@ import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 
 export const loader = async () => {
-  const logs = readLogs({ limit: 100 });
+  const logs = await readLogs({ limit: 100 });
   return json({ logs });
 };
 
@@ -18,4 +18,3 @@ export default function AdminLogsPage() {
     </div>
   );
 }
-

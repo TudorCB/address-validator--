@@ -4,14 +4,26 @@ import { useLoaderData, useActionData, Form } from "@remix-run/react";
 import { Page, Layout, Card, Text, TextField, Checkbox, Button, InlineStack, BlockStack, Box, ChoiceList, Banner } from "@shopify/polaris";
 import AppFrame from "../components/AppFrame.jsx";
 import { getSettings, updateSettings } from "../lib/settings.js";
+import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const saved = url.searchParams.get("saved") === "1";
-  return json({ settings: getSettings(), saved });
+  let shop = "__global__";
+  try {
+    const { session } = await authenticate.admin(request);
+    shop = session?.shop || shop;
+  } catch {}
+  const settings = await getSettings(shop);
+  return json({ settings, saved });
 };
 
 export const action = async ({ request }) => {
+  let shop = "__global__";
+  try {
+    const { session } = await authenticate.admin(request);
+    shop = session?.shop || shop;
+  } catch {}
   const form = await request.formData();
   const radiusStr = form.get("pickupRadiusKm");
   const blockPoBoxesStr = form.get("blockPoBoxes");
@@ -27,12 +39,12 @@ export const action = async ({ request }) => {
     return json({ error: "Pickup Search Radius must be a number between 0 and 500." }, { status: 400 });
   }
 
-  updateSettings({
+  await updateSettings({
     pickupRadiusKm: radius,
     blockPoBoxes,
     autoApplyCorrections,
     softMode,
-  });
+  }, shop);
 
   return redirect("/settings?saved=1");
 };

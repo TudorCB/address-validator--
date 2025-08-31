@@ -30,3 +30,32 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model AppSetting {
+  id                    String  @id @default(cuid())
+  shop                  String
+  blockPoBoxes          Boolean @default(true)
+  autoApplyCorrections  Boolean @default(true)
+  softMode              Boolean @default(false)
+  pickupRadiusKm        Int     @default(25)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([shop])
+}
+
+model ValidationLog {
+  id                 String   @id @default(cuid())
+  ts                 DateTime @default(now())
+  route              String
+  status             String
+  action             String?
+  message            String?
+  shopDomain         String?
+  contextSource      String?
+  addressZip         String?
+  addressCity        String?
+  addressProvince    String?
+  addressCountry     String?
+  providerResponseId String?
+}

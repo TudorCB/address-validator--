@@ -65,6 +65,23 @@ export async function verifySession(request) {
   }
 }
 
+export function extractShopFromAuthHeader(request) {
+  try {
+    const auth = request.headers.get("authorization") || "";
+    if (!auth.toLowerCase().startsWith("bearer ")) return null;
+    const token = auth.slice(7).trim();
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payloadJson = Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    const payload = JSON.parse(payloadJson);
+    const dest = String(payload.dest || "");
+    const m = dest.match(/^https?:\/\/([^/]+)/i);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 function jsonFromB64Url(b64url) {
   try {
     const json = Buffer.from(b64url.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");

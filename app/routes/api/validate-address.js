@@ -2,6 +2,7 @@ import { json } from "@remix-run/node";
 import { verifySession } from "../../lib/session-verify.js";
 import { rateLimit } from "../../lib/rate-limit.js";
 import { validateAddressPipeline } from "../../lib/validateAddressPipeline.js";
+import { getSettings } from "../../lib/settings.js";
 import { writeLog } from "../../lib/logs.js";
 function rateKey(request) {
   const ip = request.headers.get("x-forwarded-for") || request.headers.get("cf-connecting-ip") || "unknown";
@@ -32,7 +33,25 @@ export async function action({ request }) {
     };
     const hasContext = !!payload?.context?.source && !!payload?.context?.shopDomain;
     const hasAddress = !!payload?.address?.address1 && !!payload?.address?.city && !!payload?.address?.country;
-    if (!hasContext || !hasAddress) {
+    if (!hasContext) {
+      return json({ error: "bad_request" }, { status: 400 });
+    }
+    // For thank_you and customer_account, allow missing address and return a summary stub
+    if (!hasAddress && (contextSource === "thank_you" || contextSource === "customer_account")) {
+      const settings = await getSettings(payload?.context?.shopDomain || "__global__");
+      return json({
+        status: "ok",
+        action: "UNVERIFIED",
+        message: "No address provided at this surface. Showing summary only.",
+        correctedAddress: null,
+        dpvFlags: {},
+        rooftop: null,
+        mapImageUrl: null,
+        confidence: 0,
+        settings,
+      });
+    }
+    if (!hasAddress) {
       return json({ error: "bad_request" }, { status: 400 });
     }
 

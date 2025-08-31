@@ -14,7 +14,8 @@ function isPoBox(addressLine = "") {
  * - Apply softMode downgrade if enabled
  */
 export async function validateAddressPipeline(payload) {
-  const settings = getSettings();
+  const shop = payload?.context?.shopDomain || "__global__";
+  const settings = await getSettings(shop);
   const address = payload?.address || null;
   const { cleaned } = normalizeAddress(address);
 
@@ -98,24 +99,44 @@ export async function validateAddressPipeline(payload) {
     const mapImageUrl = rooftop ? buildStaticMapUrl(rooftop.lat, rooftop.lng) : null;
     const differ = addressesDiffer(cleaned, fromGoogle);
     const deliverable = verdict?.addressComplete === true;
+    const missingUnit = isMissingUnitHint(g?.result, cleaned);
 
-    result = {
-      status: "ok",
-      action: differ ? "CORRECTED" : (deliverable ? "OK" : "UNVERIFIED"),
-      message: differ
-        ? "Address corrected to postal standard by Google."
-        : deliverable
-        ? "Address validated by Google."
-        : "Address not fully verified. Please confirm details.",
-      correctedAddress: fromGoogle,
-      dpvFlags: { deliverable: !!deliverable },
-      rooftop: rooftop || null,
-      mapImageUrl,
-      confidence: deliverable ? 0.95 : 0.7,
-      cacheKey: null,
-      settings,
-      providerResponseId: g?.responseId || null,
-    };
+    if (missingUnit) {
+      // Enforce or warn depending on mode
+      result = {
+        status: "ok",
+        action: settings.softMode ? "UNVERIFIED" : "BLOCK_MISSING_UNIT",
+        message: settings.softMode
+          ? "Apartment/Unit appears required. Proceeding in soft mode; please confirm."
+          : "Apartment/Unit appears required for delivery.",
+        correctedAddress: fromGoogle,
+        dpvFlags: { deliverable: false, missingUnit: true },
+        rooftop: rooftop || null,
+        mapImageUrl,
+        confidence: 0.8,
+        cacheKey: null,
+        settings,
+        providerResponseId: g?.responseId || null,
+      };
+    } else {
+      result = {
+        status: "ok",
+        action: differ ? "CORRECTED" : (deliverable ? "OK" : "UNVERIFIED"),
+        message: differ
+          ? "Address corrected to postal standard by Google."
+          : deliverable
+          ? "Address validated by Google."
+          : "Address not fully verified. Please confirm details.",
+        correctedAddress: fromGoogle,
+        dpvFlags: { deliverable: !!deliverable },
+        rooftop: rooftop || null,
+        mapImageUrl,
+        confidence: deliverable ? 0.95 : 0.7,
+        cacheKey: null,
+        settings,
+        providerResponseId: g?.responseId || null,
+      };
+    }
   } catch (e) {
     // Fallback to local heuristic-only path
     result = {
@@ -136,14 +157,9 @@ export async function validateAddressPipeline(payload) {
   // Soft mode post-process: if ever BLOCK_* is returned, downgrade here
   if (settings.softMode && String(result.action).startsWith("BLOCK_")) {
     result.action = "UNVERIFIED";
-    result.message = "Soft mode enabled — validation warnings only.";
+    result.message = "Soft mode enabled � validation warnings only.";
   }
-
-    // Normalize soft mode message to avoid encoding artifacts
-    if (settings.softMode && String(result.action).startsWith("BLOCK_")) {
-      result.message = "Soft mode enabled — validation warnings only.";
-    }
-    return result;
+  return result;
 }
 
 function addressesDiffer(a, b) {
@@ -155,4 +171,18 @@ function addressesDiffer(a, b) {
     (a?.zip || "") !== (b?.zip || "") ||
     (a?.country || "") !== (b?.country || "")
   );
+}
+
+function isMissingUnitHint(googleResult, inputAddr) {
+  try {
+    const usps = googleResult?.uspsData || {};
+    const foot = String(usps.dpvFootnote || "").toUpperCase();
+    // Heuristics: some DPV footnotes indicating missing/secondary info uncertainty
+    if (/\b(A1|N1|AA|BB|CC|M1)\b/.test(foot)) return true;
+    const verdict = googleResult?.verdict || {};
+    if (verdict.addressComplete === false && !inputAddr?.address2) return true;
+    return false;
+  } catch {
+    return false;
+  }
 }

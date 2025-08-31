@@ -29,7 +29,7 @@ export async function loader({ request }) {
   }
 
   const { since, segment } = parseFilters(request);
-  const logs = readLogs({ limit: 10000 }).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
+  const logs = (await readLogs({ limit: 10000 })).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
 
   const rows = [["ts", "route", "action", "message", "shopDomain", "contextSource", "responseId"].map(esc).join(",")];
 
@@ -61,4 +61,3 @@ export async function loader({ request }) {
 }
 
 export const action = () => new Response("Not Found", { status: 404 });
-

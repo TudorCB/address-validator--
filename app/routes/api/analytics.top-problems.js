@@ -43,7 +43,7 @@ export async function loader({ request }) {
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
 
   const { since, segment } = parseFilters(request);
-  const logs = readLogs({ limit: 10000 }).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
+  const logs = (await readLogs({ limit: 10000 })).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
 
   const byZip = new Map();
   const byCity = new Map();
@@ -91,4 +91,3 @@ export async function loader({ request }) {
   });
 }
 export const action = () => new Response("Not Found", { status: 404 });
-

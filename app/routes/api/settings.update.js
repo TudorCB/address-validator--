@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { verifySession } from "../../lib/session-verify.js";
+import { verifySession, extractShopFromAuthHeader } from "../../lib/session-verify.js";
 import { updateSettings, getSettings } from "../../lib/settings.js";
 
 export async function action({ request }) {
@@ -17,7 +17,8 @@ export async function action({ request }) {
     if ("autoApplyCorrections" in patch) allowed.autoApplyCorrections = !!patch.autoApplyCorrections;
     if ("softMode" in patch) allowed.softMode = !!patch.softMode;
 
-    const updated = updateSettings(allowed);
+    const shop = extractShopFromAuthHeader(request) || "__global__";
+    const updated = await updateSettings(allowed, shop);
     return json({ status: "ok", settings: updated });
   } catch (e) {
     console.error("settings.update error", e);
@@ -26,4 +27,3 @@ export async function action({ request }) {
 }
 
 export const loader = () => new Response("Not Found", { status: 404 });
-

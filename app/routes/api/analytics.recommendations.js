@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { verifySession } from "../../lib/session-verify.js";
+import { verifySession, extractShopFromAuthHeader } from "../../lib/session-verify.js";
 import { readLogs } from "../../lib/logs.js";
 import { getSettings } from "../../lib/settings.js";
 
@@ -30,8 +30,9 @@ export async function loader({ request }) {
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
 
   const { since, segment } = parseFilters(request);
-  const settings = getSettings();
-  const logs = readLogs({ limit: 5000 }).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
+  const shop = extractShopFromAuthHeader(request) || "__global__";
+  const settings = await getSettings(shop);
+  const logs = (await readLogs({ limit: 5000 })).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
   const insights = [];
 
   const blockedMissingUnit = logs.filter((l) => l.action === "BLOCK_MISSING_UNIT").length;
