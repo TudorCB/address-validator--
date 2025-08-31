@@ -11,7 +11,8 @@ function rateKey(request) {
 export async function action({ request }) {
   const { allowed, remaining, resetAt } = rateLimit({ key: rateKey(request), max: 300, windowMs: 60_000 });
   if (!allowed) return json({ error: "rate_limited", resetAt }, { status: 429 });
-
+  let contextSource = null;
+  let meta = {};
   try {
     const authorized = await verifySession(request);
     if (!authorized) return json({ error: "unauthorized" }, { status: 401 });
@@ -21,9 +22,9 @@ export async function action({ request }) {
     }
 
     const payload = await request.json();
-    const contextSource = payload?.context?.source || null;
+    contextSource = payload?.context?.source || null;
     const addr = payload?.address || {};
-    const meta = {
+    meta = {
       addressZip: addr.zip || null,
       addressCity: addr.city || null,
       addressProvince: addr.province || addr.provinceCode || null,

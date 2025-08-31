@@ -20,6 +20,7 @@ These variables are primarily for the server-only Remix application.
 - `CACHE_TTL_SECONDS`: Time-to-live for cached items in seconds. Defaults to `86400` (24 hours).
 - `RATE_LIMIT_PER_MIN`: The number of requests allowed per minute. Defaults to `300`.
 - `SHOP_CUSTOM_DOMAIN`: Optional variable for handling custom shop domains.
+- `SESSION_TOKEN_ALLOW_DEV_STUB`: In dev only, allow the stub token `dev.stub.jwt` for local testing. Defaults to `true` when `NODE_ENV!="production"`. Set to `false` to enforce strict JWT verification.
 
 ### Development & Build
 - `PORT` or `SHOPIFY_APP_PORT`: Port for the main Remix app server. Defaults to `3000`.
@@ -44,6 +45,7 @@ Scopes can be defined in `shopify.app.toml` or via the `SCOPES` environment vari
 ## Security Notes
 - Never embed sensitive API keys (Google, UPS, etc.) in frontend extension bundles.
 - Extensions should use `getSessionToken` to get a short-lived token, which must be verified by the server-side application.
+- Session token verification uses HMAC (HS256) with `SHOPIFY_API_SECRET`. Ensure `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are set correctly.
 
 ## Quick Install URL
 Use this link to install the app to your development store (per-user):
