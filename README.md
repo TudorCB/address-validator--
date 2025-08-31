@@ -125,3 +125,77 @@ Environment variables and OAuth scopes are documented in `docs/env-and-scopes.md
 
 - PII minimization: logs only include city/ZIP/province/country and coarse context. Address2 is excluded from the normalized hash.
 - Address-level caching: the validation pipeline caches results per normalized address and policy toggles using `app/lib/cache.js` (Redis if configured, in-memory otherwise). TTL is controlled by `CACHE_TTL_SECONDS` (default 86400).
+
+Environment & secrets
+
+ SESSION_TOKEN_ALLOW_DEV_STUB=false in production
+
+ SESSION_SECRET (or SHOPIFY_API_SECRET) set and rotated
+
+ SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_APP_URL configured
+
+ DPV provider chosen + creds set
+DPV_PROVIDER=usps|easypost|shippo
+USPS_WEBTOOLS_USERID or EASYPOST_API_KEY or SHIPPO_API_TOKEN
+
+ (Optional) Google: GOOGLE_MAPS_API_KEY (+ Static Maps signing vars if used)
+
+ Redis: REDIS_URL (required for multi-instance prod)
+
+ Rate limits: RATE_LIMIT_PER_SHOP_MIN (e.g., 600)
+
+ Caching: CACHE_TTL_SECONDS (e.g., 86400)
+
+ Logs retention: LOG_TTL_DAYS (e.g., 90)
+
+Security
+
+ Strict JWT verification enabled (no dev stub)
+
+ All API routes check Authorization: Bearer <jwt>
+
+ Webhooks HMAC verified, failures alerting
+
+ CORS headers scoped to your embedded app origin
+
+Reliability / cost control
+
+ Redis enabled for cache and rate-limit
+
+ Provider calls wrapped with retry/backoff + circuit breaker
+
+ Quota/budget alerting (Google/DPV) at 80%+
+
+ Cache hit-rate & provider health surfaced on Analytics
+
+UX / behavior
+
+ Checkout writeback warning banner shows when auto-apply fails (wallet/restricted)
+
+ Soft mode behavior verified end-to-end (BLOCK_* → UNVERIFIED)
+
+ Empty-state + skeletons render (first-run merchant)
+
+ iFrame sizing / embedded nav is smooth (no horizontal scroll)
+
+Data & privacy
+
+ Logs exclude PII (no phone/email; address2 redacted)
+
+ CSV export contains only coarse location + action
+
+ TTL cleanup job scheduled (e.g., daily)
+
+Acceptance smoke
+
+ PO Box → BLOCK_PO_BOX (or UNVERIFIED in soft mode)
+
+ Multi-unit without address2 → BLOCK_MISSING_UNIT via DPV
+
+ Clean SFR → OK
+
+ Undeliverable + nearby pickup → SUGGEST_PICKUP
+
+ Per-shop rate-limit returns 429 with resetAt
+
+ Analytics totals/trends match seeded data
