@@ -29,14 +29,19 @@ export const action = async ({ request }) => {
   const blockPoBoxesStr = form.get("blockPoBoxes");
   const autoApplyCorrectionsStr = form.get("autoApplyCorrections");
   const softModeStr = form.get("softMode");
+  const failedCostStr = form.get("failedDeliveryCostUsd");
 
   const radius = Number(radiusStr);
   const blockPoBoxes = blockPoBoxesStr === "on" || blockPoBoxesStr === "true";
   const autoApplyCorrections = autoApplyCorrectionsStr === "on" || autoApplyCorrectionsStr === "true";
   const softMode = softModeStr === "on" || softModeStr === "true";
+  const failedDeliveryCostUsd = Number(failedCostStr);
 
   if (!Number.isFinite(radius) || radius < 0 || radius > 500) {
     return json({ error: "Pickup Search Radius must be a number between 0 and 500." }, { status: 400 });
+  }
+  if (!Number.isFinite(failedDeliveryCostUsd) || failedDeliveryCostUsd < 0 || failedDeliveryCostUsd > 1000) {
+    return json({ error: "Failed Delivery Cost must be between 0 and 1000." }, { status: 400 });
   }
 
   await updateSettings({
@@ -44,6 +49,7 @@ export const action = async ({ request }) => {
     blockPoBoxes,
     autoApplyCorrections,
     softMode,
+    failedDeliveryCostUsd,
   }, shop);
 
   return redirect("/settings?saved=1");
@@ -57,12 +63,15 @@ export default function SettingsPage() {
   const [autoApplyCorrections, setAutoApplyCorrections] = React.useState(!!settings.autoApplyCorrections);
   const [softMode, setSoftMode] = React.useState(!!settings.softMode);
   const [pickupRadiusKm, setPickupRadiusKm] = React.useState(String(settings.pickupRadiusKm ?? 25));
+  const [failedDeliveryCostUsd, setFailedDeliveryCostUsd] = React.useState(String(settings.failedDeliveryCostUsd ?? 12));
 
   const enforceUnit = !softMode;
   const handleModeChange = (sel) => setSoftMode((sel?.[0] || "hard") === "soft");
 
   const radiusNumber = Number(pickupRadiusKm);
   const radiusError = !Number.isFinite(radiusNumber) || radiusNumber < 0 || radiusNumber > 500 ? "Must be between 0 and 500" : undefined;
+  const costNumber = Number(failedDeliveryCostUsd);
+  const costError = !Number.isFinite(costNumber) || costNumber < 0 || costNumber > 1000 ? "Must be between 0 and 1000" : undefined;
 
   return (
     <AppFrame>
@@ -149,11 +158,37 @@ export default function SettingsPage() {
               </Card>
             </Layout.Section>
 
+            {/* Estimated Savings */}
+            <Layout.Section>
+              <Card>
+                <Box padding="400">
+                  <Text as="h3" variant="headingMd">Estimated Savings</Text>
+                  <Box paddingBlockStart="300">
+                    <InlineStack align="space-between" blockAlign="center">
+                      <div style={{ minWidth: 260 }}>
+                        <TextField
+                          label="Failed Delivery Cost (USD)"
+                          name="failedDeliveryCostUsd"
+                          type="number"
+                          min={0}
+                          value={failedDeliveryCostUsd}
+                          onChange={setFailedDeliveryCostUsd}
+                          autoComplete="off"
+                          error={result?.error?.includes("Failed Delivery Cost") ? result.error : costError}
+                        />
+                      </div>
+                      <div />
+                    </InlineStack>
+                  </Box>
+                </Box>
+              </Card>
+            </Layout.Section>
+
             {/* Save/Cancel */}
             <Layout.Section>
               <InlineStack gap="300">
                 <input type="hidden" name="softMode" value={softMode ? "on" : "false"} />
-                <Button submit variant="primary" disabled={!!radiusError}>Save Settings</Button>
+                <Button submit variant="primary" disabled={!!radiusError || !!costError}>Save Settings</Button>
                 <Button url="/index">Cancel</Button>
               </InlineStack>
             </Layout.Section>

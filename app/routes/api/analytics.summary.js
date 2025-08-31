@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
-import { verifySession } from "../../lib/session-verify.js";
+import { verifySession, extractShopFromAuthHeader } from "../../lib/session-verify.js";
 import { readLogs } from "../../lib/logs.js";
+import { getSettings } from "../../lib/settings.js";
 
 function parseFilters(request) {
   const url = new URL(request.url);
@@ -23,6 +24,7 @@ function segmentMatch(log, segment) {
 export async function loader({ request }) {
   const ok = await verifySession(request);
   if (!ok) return json({ error: "unauthorized" }, { status: 401 });
+  const shop = extractShopFromAuthHeader(request) || "__global__";
 
   const { days, since, segment } = parseFilters(request);
   const logs = (await readLogs({ limit: 5000 })).filter((l) => (l.ts || 0) >= since && segmentMatch(l, segment));
@@ -36,9 +38,9 @@ export async function loader({ request }) {
   const suggestPickup = logs.filter((l) => l.action === "SUGGEST_PICKUP").length;
   const unver = logs.filter((l) => l.action === "UNVERIFIED").length;
 
-  const avgFailedDeliveryCost = 18; // Updated to match screenshot estimate
+  const settings = await getSettings(shop);
   const prevented = corrected + blocked;
-  const estimatedSavings = prevented * avgFailedDeliveryCost;
+  const estimatedSavings = prevented * (settings.failedDeliveryCostUsd ?? 12);
 
   // Build daily trend within range
   const start = new Date();
@@ -108,6 +110,11 @@ export async function loader({ request }) {
       };
     });
   }
+
+  // Ensure estimatedSavings reflects merchant-configured cost in all cases
+  try {
+    finalKpis.estimatedSavings = (finalKpis.corrected + finalKpis.blocked) * (settings.failedDeliveryCostUsd ?? 12);
+  } catch {}
 
   return json({
     status: "ok",

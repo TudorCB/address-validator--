@@ -16,6 +16,9 @@ export async function action({ request }) {
     if ("blockPoBoxes" in patch) allowed.blockPoBoxes = !!patch.blockPoBoxes;
     if ("autoApplyCorrections" in patch) allowed.autoApplyCorrections = !!patch.autoApplyCorrections;
     if ("softMode" in patch) allowed.softMode = !!patch.softMode;
+    if ("failedDeliveryCostUsd" in patch && Number.isFinite(patch.failedDeliveryCostUsd) && patch.failedDeliveryCostUsd >= 0) {
+      allowed.failedDeliveryCostUsd = Number(patch.failedDeliveryCostUsd);
+    }
 
     const shop = extractShopFromAuthHeader(request) || "__global__";
     const updated = await updateSettings(allowed, shop);

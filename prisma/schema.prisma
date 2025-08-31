@@ -38,6 +38,7 @@ model AppSetting {
   autoApplyCorrections  Boolean @default(true)
   softMode              Boolean @default(false)
   pickupRadiusKm        Int     @default(25)
+  failedDeliveryCostUsd Float   @default(12)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

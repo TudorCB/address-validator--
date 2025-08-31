@@ -5,6 +5,7 @@ const DEFAULTS = {
   blockPoBoxes: true,
   autoApplyCorrections: true,
   softMode: false,
+  failedDeliveryCostUsd: 12,
 };
 
 function coercePatch(patch = {}) {
@@ -13,6 +14,7 @@ function coercePatch(patch = {}) {
   if (typeof patch.blockPoBoxes === "boolean") out.blockPoBoxes = !!patch.blockPoBoxes;
   if (typeof patch.autoApplyCorrections === "boolean") out.autoApplyCorrections = !!patch.autoApplyCorrections;
   if (typeof patch.softMode === "boolean") out.softMode = !!patch.softMode;
+  if (typeof patch.failedDeliveryCostUsd === "number" && Number.isFinite(patch.failedDeliveryCostUsd) && patch.failedDeliveryCostUsd >= 0) out.failedDeliveryCostUsd = patch.failedDeliveryCostUsd;
   return out;
 }
 
@@ -49,5 +51,6 @@ function mapRow(row) {
     blockPoBoxes: row.blockPoBoxes ?? DEFAULTS.blockPoBoxes,
     autoApplyCorrections: row.autoApplyCorrections ?? DEFAULTS.autoApplyCorrections,
     softMode: row.softMode ?? DEFAULTS.softMode,
+    failedDeliveryCostUsd: row.failedDeliveryCostUsd ?? DEFAULTS.failedDeliveryCostUsd,
   };
 }
