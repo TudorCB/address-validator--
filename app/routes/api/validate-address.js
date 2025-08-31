@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
 import { verifySession } from "../../lib/session-verify.js";
 import { rateLimit } from "../../lib/rate-limit.js";
+import { rateLimitShop } from "../../lib/rate-limit-shop.js";
 import { validateAddressPipeline } from "../../lib/validateAddressPipeline.js";
 import { getSettings } from "../../lib/settings.js";
 import { writeLog } from "../../lib/logs.js";
@@ -24,6 +25,11 @@ export async function action({ request }) {
 
     const payload = await request.json();
     contextSource = payload?.context?.source || null;
+    const shopDomain = payload?.context?.shopDomain || "unknown";
+    // Per-shop rate limit to prevent quota exhaustion
+    const perShopMax = Number(process.env.RATE_LIMIT_PER_SHOP_MIN || 600);
+    const shopRate = rateLimitShop({ shopDomain, max: Number.isFinite(perShopMax) ? perShopMax : 600 });
+    if (!shopRate.allowed) return json({ error: "rate_limited", scope: "shop", resetAt: shopRate.resetAt }, { status: 429 });
     const addr = payload?.address || {};
     meta = {
       addressZip: addr.zip || null,
@@ -61,7 +67,7 @@ export async function action({ request }) {
       route: "validate-address",
       status: "ok",
       action: result?.action,
-      shopDomain: payload?.context?.shopDomain,
+      shopDomain,
       contextSource,
       ...meta,
       providerResponseId: result?.providerResponseId || null,

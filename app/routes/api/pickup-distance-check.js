@@ -2,6 +2,7 @@ import { json } from "@remix-run/node";
 import { verifySession } from "../../lib/session-verify.js";
 import { haversineKm } from "../../lib/haversine.js";
 import { rateLimit } from "../../lib/rate-limit.js";
+import { rateLimitShop } from "../../lib/rate-limit-shop.js";
 import { getSettings } from "../../lib/settings.js";
 import { writeLog } from "../../lib/logs.js";
 
@@ -20,6 +21,10 @@ export async function action({ request }) {
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, { status: 405 });
 
     const body = await request.json();
+    const shopDomain = body?.context?.shopDomain || "unknown";
+    const perShopMax = Number(process.env.RATE_LIMIT_PER_SHOP_MIN || 600);
+    const shopRate = rateLimitShop({ shopDomain, max: Number.isFinite(perShopMax) ? perShopMax : 600 });
+    if (!shopRate.allowed) return json({ error: "rate_limited", scope: "shop", resetAt: shopRate.resetAt }, { status: 429 });
     const { customerLocation, pickupLocations = [], radiusKm } = body || {};
     const contextSource = body?.context?.source || "checkout";
     if (!customerLocation || !Array.isArray(pickupLocations) || pickupLocations.length === 0) {
