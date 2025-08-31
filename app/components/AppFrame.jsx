@@ -1,6 +1,7 @@
 import { Frame, TopBar, Navigation } from "@shopify/polaris";
 import { useState, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "@remix-run/react";
+import { t } from "../lib/i18n.js";
 
 export default function AppFrame({ children }) {
   const [searchActive, setSearchActive] = useState(false);
@@ -22,7 +23,7 @@ export default function AppFrame({ children }) {
         <TopBar.SearchField
           onChange={handleSearchChange}
           value={searchValue}
-          placeholder="Search (not wired)"
+          placeholder={t("search.placeholder")}
         />
       }
       searchResultsVisible={searchActive}
@@ -33,22 +34,22 @@ export default function AppFrame({ children }) {
 
   const navItems = useMemo(() => ([
     {
-      label: "Dashboard",
+      label: t("nav.dashboard"),
       destination: "/index",
       selected: location.pathname === "/" || location.pathname.startsWith("/index")
     },
     {
-      label: "Settings",
+      label: t("nav.settings"),
       destination: "/settings",
       selected: location.pathname.startsWith("/settings")
     },
     {
-      label: "Pickups",
+      label: t("nav.pickups"),
       destination: "/pickups",
       selected: location.pathname.startsWith("/pickups")
     },
     {
-      label: "Analytics",
+      label: t("nav.analytics"),
       destination: "/analytics",
       selected: location.pathname.startsWith("/analytics")
     }

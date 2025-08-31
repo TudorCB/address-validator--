@@ -3,6 +3,7 @@ import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { Page, Layout, Card, Text, TextField, Button, InlineStack, DataTable, Modal, Box, Banner } from "@shopify/polaris";
 import AppFrame from "../components/AppFrame.jsx";
+import { t } from "../lib/i18n.js";
 
 export const loader = async () => json({});
 
@@ -12,13 +13,13 @@ function useSessionHeaders() {
   return React.useMemo(() => ({ authorization: `Bearer ${token}` }), [token]);
 }
 
-function validateLatLng(lat, lng) {
-  const la = Number(lat);
-  const ln = Number(lng);
-  if (!Number.isFinite(la) || la < -90 || la > 90) return "Latitude must be between -90 and 90";
-  if (!Number.isFinite(ln) || ln < -180 || ln > 180) return "Longitude must be between -180 and 180";
-  return null;
-}
+  function validateLatLng(lat, lng) {
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!Number.isFinite(la) || la < -90 || la > 90) return t("errors.invalid_lat_lng");
+    if (!Number.isFinite(ln) || ln < -180 || ln > 180) return t("errors.invalid_lat_lng");
+    return null;
+  }
 
 export default function PickupsPage() {
   useLoaderData();
@@ -57,7 +58,7 @@ export default function PickupsPage() {
   async function onAdd() {
     try {
       const err = validateLatLng(lat, lng);
-      if (!name.trim()) return setFormError("Name is required");
+      if (!name.trim()) return setFormError(t("errors.name_required"));
       if (err) return setFormError(err);
       setFormError(null);
       setSaving(true);
@@ -78,7 +79,7 @@ export default function PickupsPage() {
   }
 
   async function onDelete(id) {
-    if (!window.confirm("Delete this pickup location?")) return;
+    if (!window.confirm(t("pickups.delete_confirm"))) return;
     try {
       const res = await fetch(`/api/pickups/${encodeURIComponent(id)}`, { method: "DELETE", headers });
       const data = await res.json().catch(() => ({}));
@@ -114,30 +115,30 @@ export default function PickupsPage() {
 
   const tableRows = rows.map((r) => [r.name, String(r.lat), String(r.lng),
     <InlineStack key={r.id} gap="200">
-      <Button onClick={() => setEditing({ ...r })}>Edit</Button>
-      <Button tone="critical" onClick={() => onDelete(r.id)}>Delete</Button>
+      <Button onClick={() => setEditing({ ...r })}>{t("pickups.edit")}</Button>
+      <Button tone="critical" onClick={() => onDelete(r.id)}>{t("pickups.delete")}</Button>
     </InlineStack>
   ]);
 
   return (
     <AppFrame>
-      <Page title="Pickup Locations" subtitle="Manage store pickup points used for suggestions">
+      <Page title={t("pickups.title")} subtitle={t("pickups.subtitle")}>
         <Layout>
           <Layout.Section>
             <Card>
               <div style={{ padding: 16 }}>
-                <Text as="h3" variant="headingMd">Add Pickup Location</Text>
+                <Text as="h3" variant="headingMd">{t("pickups.add_title")}</Text>
                 <div style={{ marginTop: 12 }}>
                   <InlineStack gap="300" wrap={false}>
-                    <TextField label="Name" value={name} onChange={setName} autoComplete="off" />
-                    <TextField label="Latitude" type="number" value={lat} onChange={setLat} autoComplete="off" />
-                    <TextField label="Longitude" type="number" value={lng} onChange={setLng} autoComplete="off" />
+                    <TextField label={t("pickups.name")} value={name} onChange={setName} autoComplete="off" />
+                    <TextField label={t("pickups.latitude")} type="number" value={lat} onChange={setLat} autoComplete="off" />
+                    <TextField label={t("pickups.longitude")} type="number" value={lng} onChange={setLng} autoComplete="off" />
                     <div style={{ display: "flex", alignItems: "end" }}>
-                      <Button variant="primary" loading={saving} onClick={onAdd}>Add</Button>
+                      <Button variant="primary" loading={saving} onClick={onAdd}>{t("pickups.add")}</Button>
                     </div>
                   </InlineStack>
                   {formError ? (
-                    <Box paddingBlockStart="200"><Banner status="critical" title={formError} /></Box>
+                    <Box paddingBlockStart="200" aria-live="polite" role="status"><Banner status="critical" title={formError} /></Box>
                   ) : null}
                 </div>
               </div>
@@ -147,16 +148,16 @@ export default function PickupsPage() {
           <Layout.Section>
             <Card>
               <div style={{ padding: 16 }}>
-                <Text as="h3" variant="headingMd">Locations</Text>
+                <Text as="h3" variant="headingMd">{t("pickups.locations")}</Text>
                 <div style={{ marginTop: 12 }}>
                   {error ? (
-                    <Banner status="critical" title={String(error)} />
+                    <Box aria-live="polite" role="status"><Banner status="critical" title={String(error)} /></Box>
                   ) : null}
                   <DataTable
                     columnContentTypes={["text", "numeric", "numeric", "text"]}
-                    headings={["Name", "Latitude", "Longitude", "Actions"]}
+                    headings={[t("pickups.name"), t("pickups.latitude"), t("pickups.longitude"), "Actions"]}
                     rows={loading ? [] : tableRows}
-                    footerContent={loading ? "Loading..." : `${rows.length} locations`}
+                    footerContent={loading ? t("pickups.loading") : t("pickups.count", { count: rows.length })}
                   />
                 </div>
               </div>
@@ -167,16 +168,16 @@ export default function PickupsPage() {
         <Modal
           open={!!editing}
           onClose={() => { setEditing(null); setFormError(null); }}
-          title="Edit Pickup Location"
-          primaryAction={{ content: "Save", onAction: onSaveEdit, loading: saving }}
-          secondaryActions={[{ content: "Cancel", onAction: () => setEditing(null) }]}
+          title={t("pickups.edit_title")}
+          primaryAction={{ content: t("settings.save"), onAction: onSaveEdit, loading: saving }}
+          secondaryActions={[{ content: t("settings.cancel"), onAction: () => setEditing(null) }]}
         >
           <Modal.Section>
             {editing ? (
               <InlineStack gap="300" wrap>
-                <TextField label="Name" value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
-                <TextField label="Latitude" type="number" value={String(editing.lat)} onChange={(v) => setEditing({ ...editing, lat: v })} />
-                <TextField label="Longitude" type="number" value={String(editing.lng)} onChange={(v) => setEditing({ ...editing, lng: v })} />
+                <TextField label={t("pickups.name")} value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
+                <TextField label={t("pickups.latitude")} type="number" value={String(editing.lat)} onChange={(v) => setEditing({ ...editing, lat: v })} />
+                <TextField label={t("pickups.longitude")} type="number" value={String(editing.lng)} onChange={(v) => setEditing({ ...editing, lng: v })} />
               </InlineStack>
             ) : null}
             {formError ? <Box paddingBlockStart="200"><Banner status="critical" title={formError} /></Box> : null}
@@ -186,4 +187,3 @@ export default function PickupsPage() {
     </AppFrame>
   );
 }
-

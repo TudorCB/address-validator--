@@ -7,6 +7,7 @@ import ClientOnly from "../components/ClientOnly.jsx";
 import { SkeletonKpi, SkeletonChart, SkeletonCardLines } from "../components/Skeletons.jsx";
 import { EmptyAnalytics, EmptyProblems } from "../components/EmptyStates.jsx";
 const StackedAreaChartClient = React.lazy(() => import("../components/StackedAreaChart.client.jsx"));
+import { t } from "../lib/i18n.js";
 
 export const loader = async () => json({});
 
@@ -109,9 +110,9 @@ export default function AnalyticsPage() {
 
       // attach quick toggles
       const enriched = (i?.insights || []).map(ins => {
-        if (ins.id === "po-box-policy") return { ...ins, quickToggle: { label: "Enable PO Box block", patch: { blockPoBoxes: true } } };
-        if (ins.id === "auto-apply-corrections") return { ...ins, quickToggle: { label: "Enable Auto-apply", patch: { autoApplyCorrections: true } } };
-        if (ins.id === "missing-unit-helper") return { ...ins, quickToggle: { label: "Turn OFF Soft Mode", patch: { softMode: false } } };
+        if (ins.id === "po-box-policy") return { ...ins, quickToggle: { label: t("insights.quick.enable_po_box_block"), patch: { blockPoBoxes: true } } };
+        if (ins.id === "auto-apply-corrections") return { ...ins, quickToggle: { label: t("insights.quick.enable_auto_apply"), patch: { autoApplyCorrections: true } } };
+        if (ins.id === "missing-unit-helper") return { ...ins, quickToggle: { label: t("insights.quick.turn_off_soft_mode"), patch: { softMode: false } } };
         return ins;
       });
 
@@ -160,10 +161,10 @@ export default function AnalyticsPage() {
   return (
     <AppFrame>
       <Page
-        title="Insights & Solutions"
-        subtitle="Actionable guidance to improve deliverability and reduce costs."
+        title={t("analytics.title")}
+        subtitle={t("analytics.subtitle")}
         primaryAction={{
-          content: "Export CSV",
+          content: t("analytics.export_csv"),
           onAction: async () => {
             try {
               const token = "dev.stub.jwt"; // TODO: replace with real token
@@ -186,8 +187,8 @@ export default function AnalyticsPage() {
           }
         }}
         secondaryActions={[
-          { content: "View Logs", onAction: () => navigate("/admin/logs") },
-          { content: "Change Rules", onAction: () => navigate("/settings") }
+          { content: t("analytics.view_logs"), onAction: () => navigate("/admin/logs") },
+          { content: t("analytics.change_rules"), onAction: () => navigate("/settings") }
         ]}
       >
         <Layout>
@@ -277,29 +278,29 @@ export default function AnalyticsPage() {
                         })()}
                       </div>
                     ) : (
-                      <div style={{ marginTop: 8, color: "#616161" }}>No provider data yet.</div>
+                      <div style={{ marginTop: 8, color: "#616161" }}>{t("analytics.no_provider_data")}</div>
                     )}
                   </div>
                 </Card>
               </Layout.Section>
               <Layout.Section oneThird>
-                <Kpi title="Total validations" value={k.totalValidations ?? 0} help="All address checks across sources." />
+                <Kpi title={t("analytics.kpi.total")} value={k.totalValidations ?? 0} help={t("analytics.kpi.total_help")} />
               </Layout.Section>
               <Layout.Section oneThird>
-                <Kpi title="Deliverable (OK)" value={k.deliverableOk ?? 0} help="Passed without intervention." />
+                <Kpi title={t("analytics.kpi.ok")} value={k.deliverableOk ?? 0} help={t("analytics.kpi.ok_help")} />
               </Layout.Section>
               <Layout.Section oneThird>
-                <Kpi title="Corrected" value={k.corrected ?? 0} help="Normalized to carrier-friendly format." />
+                <Kpi title={t("analytics.kpi.corrected")} value={k.corrected ?? 0} help={t("analytics.kpi.corrected_help")} />
               </Layout.Section>
 
               <Layout.Section oneThird>
-                <Kpi title="Blocked" value={k.blocked ?? 0} help="Hard gates (e.g., missing unit, PO box)." />
+                <Kpi title={t("analytics.kpi.blocked")} value={k.blocked ?? 0} help={t("analytics.kpi.blocked_help")} />
               </Layout.Section>
               <Layout.Section oneThird>
-                <Kpi title="Suggest pickup" value={k.suggestPickup ?? 0} help="Saved sales via pickup suggestion." />
+                <Kpi title={t("analytics.kpi.suggest_pickup")} value={k.suggestPickup ?? 0} help={t("analytics.kpi.suggest_pickup_help")} />
               </Layout.Section>
               <Layout.Section oneThird>
-                <Kpi title="Est. savings" value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} help="Rough savings from prevented failed deliveries." />
+                <Kpi title={t("analytics.kpi.savings")} value={`$${(k.estimatedSavings ?? 0).toLocaleString()}`} help="Rough savings from prevented failed deliveries." />
               </Layout.Section>
 
               <Layout.Section>
@@ -308,7 +309,7 @@ export default function AnalyticsPage() {
                     <Text as="h3" variant="headingMd">Validation trend</Text>
                     <div style={{ height: 280, marginTop: 16 }}>
                       <ClientOnly>
-                        <React.Suspense fallback={<div style={{ color: "#616161" }}>Loading chart...</div>}>
+                        <React.Suspense fallback={<div style={{ color: "#616161" }}>{t("analytics.loading_chart")}</div>}>
                           <StackedAreaChartClient
                             isAnimated
                             data={trend}
@@ -325,10 +326,10 @@ export default function AnalyticsPage() {
               <Layout.Section>
                 <Card>
                   <div style={{ padding: 16 }}>
-                    <Text as="h3" variant="headingMd">Actionable insights</Text>
+                    <Text as="h3" variant="headingMd">{t("analytics.actionable_insights")}</Text>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12, marginTop: 12 }}>
                       {(insights || []).length === 0 ? (
-                        <div style={{ color: "#616161" }}>No insights yet - come back after more traffic.</div>
+                        <div style={{ color: "#616161" }}>{t("analytics.no_insights")}</div>
                       ) : (
                         (insights || []).map(i => (
                           <InsightCard

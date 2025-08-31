@@ -5,6 +5,7 @@ import { Page, Layout, Card, Text, TextField, Checkbox, Button, InlineStack, Blo
 import AppFrame from "../components/AppFrame.jsx";
 import { getSettings, updateSettings } from "../lib/settings.js";
 import { authenticate } from "../shopify.server";
+import { t } from "../lib/i18n.js";
 
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
@@ -38,10 +39,10 @@ export const action = async ({ request }) => {
   const failedDeliveryCostUsd = Number(failedCostStr);
 
   if (!Number.isFinite(radius) || radius < 0 || radius > 500) {
-    return json({ error: "Pickup Search Radius must be a number between 0 and 500." }, { status: 400 });
+    return json({ error: t("errors.pickup_radius_range") }, { status: 400 });
   }
   if (!Number.isFinite(failedDeliveryCostUsd) || failedDeliveryCostUsd < 0 || failedDeliveryCostUsd > 1000) {
-    return json({ error: "Failed Delivery Cost must be between 0 and 1000." }, { status: 400 });
+    return json({ error: t("errors.failed_cost_range") }, { status: 400 });
   }
 
   await updateSettings({
@@ -100,10 +101,10 @@ export default function SettingsPage() {
 
   return (
     <AppFrame>
-      <Page title="Address Validator++: Settings" subtitle="Customize your address policies">
+      <Page title={t("settings.title")} subtitle={t("settings.subtitle")}>
         {saved ? (
-          <Box padding="300">
-            <Banner status="success" title="Settings saved" />
+          <Box padding="300" aria-live="polite" role="status">
+            <Banner status="success" title={t("settings.saved")} />
           </Box>
         ) : null}
         <Form method="post">
@@ -112,17 +113,17 @@ export default function SettingsPage() {
             <Layout.Section>
               <Card>
                 <Box padding="400">
-                  <Text as="h3" variant="headingMd">Validation Rules</Text>
+                  <Text as="h3" variant="headingMd">{t("settings.validation_rules")}</Text>
                   <Box paddingBlockStart="300">
                     <BlockStack gap="300">
                       <InlineStack align="space-between" blockAlign="center">
                         <BlockStack gap="100">
-                          <Checkbox label="Block PO Boxes" name="blockPoBoxes" checked={blockPoBoxes} onChange={setBlockPoBoxes} />
-                          <Text tone="subdued">Prevent shipping to PO Box addresses</Text>
+                          <Checkbox label={t("settings.block_po_boxes")} name="blockPoBoxes" checked={blockPoBoxes} onChange={setBlockPoBoxes} />
+                          <Text tone="subdued">{t("settings.block_po_boxes_help")}</Text>
                         </BlockStack>
-                        <Checkbox label="Enforce Unit/Apt #" checked={enforceUnit} onChange={(v) => setSoftMode(!v)} />
+                        <Checkbox label={t("settings.enforce_unit")} checked={enforceUnit} onChange={(v) => setSoftMode(!v)} />
                       </InlineStack>
-                      <Text tone="subdued">Require unit/apartment for multiâ€‘unit buildings</Text>
+                      <Text tone="subdued">Require unit/apartment for multi‑unit buildings</Text>
                     </BlockStack>
                   </Box>
                 </Box>
@@ -133,16 +134,16 @@ export default function SettingsPage() {
             <Layout.Section>
               <Card>
                 <Box padding="400">
-                  <Text as="h3" variant="headingMd">Pickup Location Suggestions</Text>
+                  <Text as="h3" variant="headingMd">{t("settings.pickup_suggestions")}</Text>
                   <Box paddingBlockStart="300">
-                    <Text tone="subdued">Validation Mode</Text>
+                    <Text tone="subdued">{t("settings.validation_mode")}</Text>
                     <Box paddingBlockStart="200">
                       <ChoiceList
-                        title="Validation Mode"
+                        title={t("settings.validation_mode")}
                         titleHidden
                         choices={[
-                          { label: "Hard Mode (Strict blocking at checkout)", value: "hard" },
-                          { label: "Soft (Warn and allow override)", value: "soft" },
+                          { label: t("settings.mode.hard"), value: "hard" },
+                          { label: t("settings.mode.soft"), value: "soft" },
                         ]}
                         selected={[softMode ? "soft" : "hard"]}
                         onChange={handleModeChange}
@@ -158,16 +159,16 @@ export default function SettingsPage() {
             <Layout.Section>
               <Card>
                 <Box padding="400">
-                  <Text as="h3" variant="headingMd">Autoâ€‘Suggest Store Pickup</Text>
+                  <Text as="h3" variant="headingMd">Auto‑Suggest Store Pickup</Text>
                   <Box paddingBlockStart="300">
                     <InlineStack align="space-between" blockAlign="center">
                       <BlockStack gap="100">
-                        <Checkbox label="Autoâ€‘Apply Corrections" name="autoApplyCorrections" checked={autoApplyCorrections} onChange={setAutoApplyCorrections} />
-                        <Text tone="subdued">Automatically fix common typos and formatting issues</Text>
+                        <Checkbox label={t("settings.auto_apply")} name="autoApplyCorrections" checked={autoApplyCorrections} onChange={setAutoApplyCorrections} />
+                        <Text tone="subdued">{t("settings.auto_apply_help")}</Text>
                       </BlockStack>
                       <div style={{ minWidth: 260 }}>
                         <TextField
-                          label="Pickup Search Radius (km)"
+                          label={t("settings.pickup_radius")}
                           name="pickupRadiusKm"
                           type="number"
                           min={0}
@@ -187,12 +188,12 @@ export default function SettingsPage() {
             <Layout.Section>
               <Card>
                 <Box padding="400">
-                  <Text as="h3" variant="headingMd">Estimated Savings</Text>
+                  <Text as="h3" variant="headingMd">{t("settings.estimated_savings")}</Text>
                   <Box paddingBlockStart="300">
                     <InlineStack align="space-between" blockAlign="center">
                       <div style={{ minWidth: 260 }}>
                         <TextField
-                          label="Failed Delivery Cost (USD)"
+                          label={t("settings.failed_cost")}
                           name="failedDeliveryCostUsd"
                           type="number"
                           min={0}
@@ -203,20 +204,20 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div>
-                        <Button onClick={onSimulate} loading={simLoading}>Simulate changes</Button>
+                        <Button onClick={onSimulate} loading={simLoading}>{t("settings.simulate")}</Button>
                       </div>
                     </InlineStack>
                     {simError ? (
-                      <Box paddingBlockStart="200"><Banner status="critical" title={String(simError)} /></Box>
+                      <Box paddingBlockStart="200" aria-live="polite" role="status"><Banner status="critical" title={String(simError)} /></Box>
                     ) : null}
                     {sim?.delta ? (
-                      <Box paddingBlockStart="200">
-                        <Banner status="info" title="Projected impact">
+                      <Box paddingBlockStart="200" aria-live="polite" role="status">
+                        <Banner status="info" title={t("settings.simulation_impact")}>
                           <div style={{ marginTop: 8 }}>
-                            <div><b>Blocked:</b> {sim.delta.blocked >= 0 ? `+${sim.delta.blocked}` : sim.delta.blocked}</div>
-                            <div><b>OK:</b> {sim.delta.ok >= 0 ? `+${sim.delta.ok}` : sim.delta.ok}</div>
-                            <div><b>Corrected:</b> {sim.delta.corrected >= 0 ? `+${sim.delta.corrected}` : sim.delta.corrected}</div>
-                            <div><b>Unverified:</b> {sim.delta.unver >= 0 ? `+${sim.delta.unver}` : sim.delta.unver}</div>
+                            <div><b>{t("delta.blocked")}:</b> {sim.delta.blocked >= 0 ? `+${sim.delta.blocked}` : sim.delta.blocked}</div>
+                            <div><b>{t("delta.ok")}:</b> {sim.delta.ok >= 0 ? `+${sim.delta.ok}` : sim.delta.ok}</div>
+                            <div><b>{t("delta.corrected")}:</b> {sim.delta.corrected >= 0 ? `+${sim.delta.corrected}` : sim.delta.corrected}</div>
+                            <div><b>{t("delta.unverified")}:</b> {sim.delta.unver >= 0 ? `+${sim.delta.unver}` : sim.delta.unver}</div>
                           </div>
                         </Banner>
                       </Box>
@@ -230,14 +231,14 @@ export default function SettingsPage() {
             <Layout.Section>
               <InlineStack gap="300">
                 <input type="hidden" name="softMode" value={softMode ? "on" : "false"} />
-                <Button submit variant="primary" disabled={!!radiusError || !!costError}>Save Settings</Button>
-                <Button url="/index">Cancel</Button>
+                <Button submit variant="primary" disabled={!!radiusError || !!costError}>{t("settings.save")}</Button>
+                <Button url="/index">{t("settings.cancel")}</Button>
               </InlineStack>
             </Layout.Section>
           </Layout>
         </Form>
         {result?.error ? (
-          <Box padding="300"><Banner status="critical" title={String(result.error)} /></Box>
+          <Box padding="300" aria-live="polite" role="status"><Banner status="critical" title={String(result.error)} /></Box>
         ) : null}
       </Page>
     </AppFrame>

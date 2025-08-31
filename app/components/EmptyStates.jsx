@@ -1,19 +1,19 @@
 import { Card, EmptyState, Button } from "@shopify/polaris";
 import React from "react";
+import { t } from "../lib/i18n.js";
 
 export function EmptyAnalytics({ onGoToSettings, onGoToDocs }) {
   return (
     <Card>
       <div style={{ padding: 0 }}>
         <EmptyState
-          heading="No analytics yet"
-          action={{ content: "Review validation rules", onAction: onGoToSettings }}
-          secondaryAction={{ content: "Read setup guide", onAction: onGoToDocs }}
+          heading={t("analytics.empty.heading")}
+          action={{ content: t("analytics.empty.review_rules"), onAction: onGoToSettings }}
+          secondaryAction={{ content: t("analytics.empty.read_setup"), onAction: onGoToDocs }}
           image="https://cdn.shopify.com/shopifycloud/web/assets/v1/5843a9b1ab1a8a8c0b1f.svg"
         >
           <p>
-            As orders come in, we’ll show validation trends, blocked causes, and savings. In the meantime,
-            ensure your rules are set the way you want.
+            {t("analytics.empty.body")}
           </p>
         </EmptyState>
       </div>
@@ -26,11 +26,9 @@ export function EmptyProblems() {
     <Card>
       <div style={{ padding: 16 }}>
         <p style={{ color: "#616161", margin: 0 }}>
-          No problem clusters yet. Great news — keep an eye here for ZIPs or cities that frequently need
-          attention.
+          {t("analytics.empty.no_problems")}
         </p>
       </div>
     </Card>
   );
 }
-
