@@ -2,6 +2,7 @@ import { validateWithGoogle, extractLatLng, buildStaticMapUrl, normalizedFromGoo
 import { normalizeAddress } from "./address-normalize.js";
 import { getSettings } from "./settings.js";
 import { dpvValidate, mapDpvToAction } from "./dpv.js";
+import { findNearestPickup } from "./pickups.js";
 
 /**
  * Minimal pipeline with DPV integration:
@@ -33,6 +34,41 @@ export async function validateAddressPipeline(payload) {
   }
   const dpvDecision = mapDpvToAction(dpv, settings);
   if (String(dpvDecision.action).startsWith("BLOCK_")) {
+    // Special handling: when undeliverable, suggest nearest pickup if within range
+    if (dpvDecision.action === "BLOCK_UNDELIVERABLE") {
+      try {
+        const g = await validateWithGoogle(cleaned);
+        const rooftop = extractLatLng(g?.result);
+        const mapImageUrl = rooftop ? buildStaticMapUrl(rooftop.lat, rooftop.lng) : null;
+        const { nearest, distanceKm, inRange } = rooftop
+          ? await findNearestPickup(shop, { lat: rooftop.lat, lng: rooftop.lng }, { maxKm: settings.pickupRadiusKm })
+          : { nearest: null, distanceKm: null, inRange: false };
+        if (inRange && nearest) {
+          return {
+            status: "ok",
+            action: "SUGGEST_PICKUP",
+            message: `Nearest pickup is ~${distanceKm.toFixed(2)} km: ${nearest.name}`,
+            correctedAddress: cleaned,
+            dpvFlags: {
+              deliverable: !!dpv.deliverable,
+              missingSecondary: !!dpv.missingSecondary,
+              poBox: !!dpv.poBox,
+              ambiguous: !!dpv.ambiguous,
+            },
+            rooftop: rooftop || null,
+            mapImageUrl,
+            confidence: 0.7,
+            cacheKey: null,
+            settings,
+            providerResponseId: dpv.providerResponseId || null,
+            pickup: { nearest, distanceKm, radiusKm: settings.pickupRadiusKm },
+          };
+        }
+      } catch {
+        // ignore and fall through to default DPV result
+      }
+    }
+
     const dpvResult = {
       status: "ok",
       action: dpvDecision.action,

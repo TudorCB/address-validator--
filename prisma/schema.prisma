@@ -59,3 +59,15 @@ model ValidationLog {
   addressCountry     String?
   providerResponseId String?
 }
+
+model PickupLocation {
+  id         String   @id @default(cuid())
+  shopDomain String
+  name       String
+  lat        Float
+  lng        Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([shopDomain])
+}

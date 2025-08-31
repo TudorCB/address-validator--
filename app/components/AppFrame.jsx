@@ -43,6 +43,11 @@ export default function AppFrame({ children }) {
       selected: location.pathname.startsWith("/settings")
     },
     {
+      label: "Pickups",
+      destination: "/pickups",
+      selected: location.pathname.startsWith("/pickups")
+    },
+    {
       label: "Analytics",
       destination: "/analytics",
       selected: location.pathname.startsWith("/analytics")
