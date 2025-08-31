@@ -21,7 +21,7 @@ export async function validateAddressPipeline(payload) {
   // DPV check (stubbed): evaluate PO Box and missing secondary flags
   let dpv;
   try {
-    dpv = await dpvValidate(cleaned, payload?.options);
+    dpv = await dpvValidate(cleaned, { provider: process.env.DPV_PROVIDER || "stub" });
   } catch (e) {
     // Provider down or circuit open; default to non-blocking flags
     dpv = {
@@ -29,6 +29,7 @@ export async function validateAddressPipeline(payload) {
       missingSecondary: false,
       poBox: false,
       ambiguous: false,
+      provider: null,
       providerResponseId: null,
     };
   }
@@ -49,20 +50,21 @@ export async function validateAddressPipeline(payload) {
             action: "SUGGEST_PICKUP",
             message: `Nearest pickup is ~${distanceKm.toFixed(2)} km: ${nearest.name}`,
             correctedAddress: cleaned,
-            dpvFlags: {
-              deliverable: !!dpv.deliverable,
-              missingSecondary: !!dpv.missingSecondary,
-              poBox: !!dpv.poBox,
-              ambiguous: !!dpv.ambiguous,
-            },
-            rooftop: rooftop || null,
-            mapImageUrl,
-            confidence: 0.7,
-            cacheKey: null,
-            settings,
-            providerResponseId: dpv.providerResponseId || null,
-            pickup: { nearest, distanceKm, radiusKm: settings.pickupRadiusKm },
-          };
+          dpvFlags: {
+            deliverable: !!dpv.deliverable,
+            missingSecondary: !!dpv.missingSecondary,
+            poBox: !!dpv.poBox,
+            ambiguous: !!dpv.ambiguous,
+          },
+          provider: dpv.provider || null,
+          rooftop: rooftop || null,
+          mapImageUrl,
+          confidence: 0.7,
+          cacheKey: null,
+          settings,
+          providerResponseId: dpv.providerResponseId || null,
+          pickup: { nearest, distanceKm, radiusKm: settings.pickupRadiusKm },
+        };
         }
       } catch {
         // ignore and fall through to default DPV result
@@ -80,6 +82,7 @@ export async function validateAddressPipeline(payload) {
         poBox: !!dpv.poBox,
         ambiguous: !!dpv.ambiguous,
       },
+      provider: dpv.provider || null,
       rooftop: null,
       mapImageUrl: null,
       confidence: 0.9,
@@ -170,6 +173,7 @@ export async function validateAddressPipeline(payload) {
           poBox: !!dpv.poBox,
           ambiguous: !!dpv.ambiguous,
         },
+        provider: dpv.provider || null,
         rooftop: rooftop || null,
         mapImageUrl,
         confidence: 0.8,
@@ -193,6 +197,7 @@ export async function validateAddressPipeline(payload) {
           poBox: !!dpv.poBox,
           ambiguous: !!dpv.ambiguous,
         },
+        provider: dpv.provider || null,
         rooftop: rooftop || null,
         mapImageUrl,
         confidence: deliverable ? 0.95 : 0.7,
@@ -217,6 +222,7 @@ export async function validateAddressPipeline(payload) {
         poBox: !!dpv.poBox,
         ambiguous: !!dpv.ambiguous,
       },
+      provider: dpv.provider || null,
       rooftop: null,
       mapImageUrl: null,
       confidence: circuitOpen ? 0.5 : 0.9,

@@ -69,6 +69,8 @@ export async function action({ request }) {
       shopDomain,
       contextSource,
       ...meta,
+      dpvFlags: result?.dpvFlags || {},
+      provider: result?.provider || null,
       providerResponseId: result?.providerResponseId || null,
       message: result?.message,
     });
