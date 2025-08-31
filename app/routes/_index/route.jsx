@@ -6,7 +6,8 @@ export const loader = async ({ request }) => {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
   // Redirect root to the Polaris Dashboard route
-  throw redirect("/index");
+  const qs = url.search ? url.search : "";
+  throw redirect(`/index${qs}`);
 };
 
 export default function Empty() {

@@ -76,7 +76,7 @@ export default function AppFrame({ children }) {
           key={item.destination}
           label={item.label}
           selected={item.selected}
-          onClick={() => navigate(item.destination)}
+          onClick={() => navigate(item.destination + (location.search || ""))}
         />
       ))}
       <div style={{ padding: 12 }}>

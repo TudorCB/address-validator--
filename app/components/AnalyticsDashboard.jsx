@@ -14,6 +14,7 @@ import {
 import ClientOnly from "./ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("./StackedAreaChart.client.jsx"));
 import SafeIcon from "./SafeIcon.jsx";
+import { useLocation } from "@remix-run/react";
 import { endpoints } from "../lib/api-endpoints.js";
 import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
@@ -50,6 +51,8 @@ function CircularPickupRadiusViz() {
 }
 
 export default function AnalyticsDashboard() {
+  const location = useLocation();
+  const search = location?.search || "";
   // Filters and local UI state
   const [range, setRange] = React.useState("30d");
   const [segment, setSegment] = React.useState("all");
@@ -418,7 +421,7 @@ export default function AnalyticsDashboard() {
                     <Box paddingBlockStart="200">
                       <InlineStack align="space-between" blockAlign="center">
                         <Text tone="subdued">Settings</Text>
-                        <Button url="/settings" plain>Validation rules</Button>
+                        <Button url={`/settings${search}`} plain>Validation rules</Button>
                       </InlineStack>
                     </Box>
                   </Box>

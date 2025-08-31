@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import { Page, Layout, Card, Text, Button, Select, InlineStack } from "@shopify/polaris";
-import { useNavigate } from "@remix-run/react";
+import { useNavigate, useLocation } from "@remix-run/react";
 import AppFrame from "../components/AppFrame.jsx";
 import React from "react";
 import ClientOnly from "../components/ClientOnly.jsx";
@@ -91,6 +91,7 @@ function ProblemsTable({ title, rows }) {
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [range, setRange] = React.useState("7d");
   const [segment, setSegment] = React.useState("all");
   const [isLoading, setIsLoading] = React.useState(true);
@@ -188,8 +189,8 @@ export default function AnalyticsPage() {
           }
         }}
         secondaryActions={[
-          { content: t("analytics.view_logs"), onAction: () => navigate("/admin/logs") },
-          { content: t("analytics.change_rules"), onAction: () => navigate("/settings") }
+          { content: t("analytics.view_logs"), onAction: () => navigate(`/admin/logs${location.search || ""}`) },
+          { content: t("analytics.change_rules"), onAction: () => navigate(`/settings${location.search || ""}`) }
         ]}
       >
         <Layout>
