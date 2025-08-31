@@ -39,7 +39,6 @@ function View({ state, onAcceptSuggestion }) {
   if (!state.response) return null;
 
   const { action, message, correctedAddress } = state.response;
-  const writebackError = state.writebackError;
 
   const level =
     action === "OK" ? "success"
@@ -65,9 +64,9 @@ function View({ state, onAcceptSuggestion }) {
           </BlockStack>
         ) : null}
       </Banner>
-      {writebackError ? (
-        <Banner status="warning">
-          <Text>{writebackError}</Text>
+      {state.writebackError ? (
+        <Banner status="warning" title="Manual update required">
+          <Text>{state.writebackError}</Text>
         </Banner>
       ) : null}
     </BlockStack>
@@ -168,7 +167,9 @@ function CheckoutAddressValidator() {
           });
         } catch (e) {
           console.warn("[checkout-ui] auto-apply failed", e);
-          setWritebackError("We couldn't apply the suggestion automatically (wallet or restricted checkout). Please edit the fields manually.");
+          setWritebackError(
+            "We couldn’t apply the suggestion automatically in this checkout (e.g., wallet or restricted fields). Please update the address fields manually."
+          );
         }
       }
     } catch (e) {
@@ -182,6 +183,19 @@ function CheckoutAddressValidator() {
     validateNow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced.address1, debounced.city, debounced.zip, debounced.country]);
+
+  // Clear writeback error when user edits address fields
+  useEffect(() => {
+    setWritebackError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    debounced.address1,
+    debounced.address2,
+    debounced.city,
+    debounced.province,
+    debounced.zip,
+    debounced.country,
+  ]);
 
   async function acceptSuggestion() {
     try {
@@ -204,7 +218,9 @@ function CheckoutAddressValidator() {
       await validateNow();
     } catch (e) {
       console.error("[checkout-ui] applyShippingAddressChange failed", e);
-      setWritebackError("We couldn't apply the suggestion automatically (wallet or restricted checkout). Please edit the fields manually.");
+      setWritebackError(
+        "We couldn’t apply the suggestion automatically in this checkout (e.g., wallet or restricted fields). Please update the address fields manually."
+      );
     }
   }
 
