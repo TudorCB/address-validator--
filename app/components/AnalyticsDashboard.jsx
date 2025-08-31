@@ -105,15 +105,12 @@ export default function AnalyticsDashboard() {
   const token = "dev.stub.jwt"; // accepted by session-verify in dev
 
   const trendData = React.useMemo(() => {
-    const t = summary?.trends || [];
-    return t.map((d) => ({
-      name: d.day,
-      values: [
-        { key: "Successful", value: d.ok || 0 },
-        { key: "Corrected", value: d.corrected || 0 },
-        { key: "Blocked", value: d.blocked || 0 },
-      ],
-    }));
+    const t = Array.isArray(summary?.trends) ? summary.trends : [];
+    return [
+      { name: "Successful", data: t.map((d) => ({ key: d.day, value: d.ok || 0 })) },
+      { name: "Corrected", data: t.map((d) => ({ key: d.day, value: d.corrected || 0 })) },
+      { name: "Blocked", data: t.map((d) => ({ key: d.day, value: d.blocked || 0 })) },
+    ];
   }, [summary]);
 
   async function fetchData() {

@@ -2,7 +2,7 @@
 
 client_id = "5157c62e833750cbbe886fa1f9995997"
 name = "address-validator++"
-application_url = "https://richards-sarah-grande-print.trycloudflare.com"
+application_url = "https://reggae-jerry-county-surplus.trycloudflare.com"
 embedded = true
 handle = "address-validator-36"
 
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "read_checkouts,read_customers,write_customers,read_orders"
 
 [auth]
-redirect_urls = ["https://richards-sarah-grande-print.trycloudflare.com/auth/callback", "https://richards-sarah-grande-print.trycloudflare.com/auth/shopify/callback", "https://richards-sarah-grande-print.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://reggae-jerry-county-surplus.trycloudflare.com/auth/callback", "https://reggae-jerry-county-surplus.trycloudflare.com/auth/shopify/callback", "https://reggae-jerry-county-surplus.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

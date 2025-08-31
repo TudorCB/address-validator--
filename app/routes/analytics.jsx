@@ -134,14 +134,12 @@ export default function AnalyticsPage() {
   React.useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, [range, segment]);
 
   const k = summary?.kpis || {};
-  const trend = (summary?.trends || []).map(d => ({
-    name: d.day,
-    values: [
-      { key: "OK", value: d.ok || 0 },
-      { key: "Corrected", value: d.corrected || 0 },
-      { key: "Blocked", value: d.blocked || 0 },
-    ],
-  }));
+  const days = Array.isArray(summary?.trends) ? summary.trends : [];
+  const trend = [
+    { name: "OK", data: days.map(d => ({ key: d.day, value: d.ok || 0 })) },
+    { name: "Corrected", data: days.map(d => ({ key: d.day, value: d.corrected || 0 })) },
+    { name: "Blocked", data: days.map(d => ({ key: d.day, value: d.blocked || 0 })) },
+  ];
 
   async function quickToggle(patch) {
     try {
