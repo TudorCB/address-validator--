@@ -1,4 +1,4 @@
-import { validateWithGoogle, extractLatLng, buildStaticMapUrl } from "./google.js";
+import { validateWithGoogle, extractLatLng, buildStaticMapUrl, normalizedFromGoogle } from "./google.js";
 import { normalizeAddress } from "./address-normalize.js";
 import { getSettings } from "./settings.js";
 
@@ -89,29 +89,48 @@ export async function validateAddressPipeline(payload) {
 
   const { corrected, changed } = correctAddress(cleaned);
 
-  // Provider (stub)
-  const g = await validateWithGoogle(corrected);
-  const rooftop = extractLatLng(g?.result);
-  const mapImageUrl = rooftop ? buildStaticMapUrl(rooftop.lat, rooftop.lng) : null;
+  let result;
+  try {
+    const g = await validateWithGoogle(cleaned);
+    const verdict = g?.result?.verdict || {};
+    const fromGoogle = normalizedFromGoogle(g?.result);
+    const rooftop = extractLatLng(g?.result);
+    const mapImageUrl = rooftop ? buildStaticMapUrl(rooftop.lat, rooftop.lng) : null;
+    const differ = addressesDiffer(cleaned, fromGoogle);
+    const deliverable = verdict?.addressComplete === true;
 
-  // Default "OK" stub outcome
-  let result = {
-    status: "ok",
-    action: "OK",
-    message: "Stubbed pipeline: address validated.",
-    correctedAddress: corrected,
-    dpvFlags: { deliverable: true },
-    rooftop: rooftop || null,
-    mapImageUrl,
-    confidence: 0.9,
-    cacheKey: null,
-    settings,
-  };
-
-  // Upgrade to CORRECTED if our heuristic changed the address
-  if (changed) {
-    result.action = "CORRECTED";
-    result.message = "Applied standard address formatting.";
+    result = {
+      status: "ok",
+      action: differ ? "CORRECTED" : (deliverable ? "OK" : "UNVERIFIED"),
+      message: differ
+        ? "Address corrected to postal standard by Google."
+        : deliverable
+        ? "Address validated by Google."
+        : "Address not fully verified. Please confirm details.",
+      correctedAddress: fromGoogle,
+      dpvFlags: { deliverable: !!deliverable },
+      rooftop: rooftop || null,
+      mapImageUrl,
+      confidence: deliverable ? 0.95 : 0.7,
+      cacheKey: null,
+      settings,
+      providerResponseId: g?.responseId || null,
+    };
+  } catch (e) {
+    // Fallback to local heuristic-only path
+    result = {
+      status: "ok",
+      action: changed ? "CORRECTED" : "OK",
+      message: changed ? "Applied standard address formatting." : "Stubbed pipeline: address validated.",
+      correctedAddress: corrected,
+      dpvFlags: { deliverable: true },
+      rooftop: null,
+      mapImageUrl: null,
+      confidence: 0.9,
+      cacheKey: null,
+      settings,
+      providerResponseId: null,
+    };
   }
 
   // Soft mode post-process: if ever BLOCK_* is returned, downgrade here
@@ -120,5 +139,20 @@ export async function validateAddressPipeline(payload) {
     result.message = "Soft mode enabled — validation warnings only.";
   }
 
-  return result;
+    // Normalize soft mode message to avoid encoding artifacts
+    if (settings.softMode && String(result.action).startsWith("BLOCK_")) {
+      result.message = "Soft mode enabled — validation warnings only.";
+    }
+    return result;
+}
+
+function addressesDiffer(a, b) {
+  return (
+    (a?.address1 || "") !== (b?.address1 || "") ||
+    (a?.address2 || "") !== (b?.address2 || "") ||
+    (a?.city || "") !== (b?.city || "") ||
+    (a?.province || "") !== (b?.province || "") ||
+    (a?.zip || "") !== (b?.zip || "") ||
+    (a?.country || "") !== (b?.country || "")
+  );
 }

@@ -45,6 +45,7 @@ export async function action({ request }) {
       shopDomain: payload?.context?.shopDomain,
       contextSource,
       ...meta,
+      providerResponseId: result?.providerResponseId || null,
       message: result?.message,
     });
 

@@ -14,6 +14,8 @@ These variables are primarily for the server-only Remix application.
 ### External Services
 - `GOOGLE_MAPS_API_KEY`: API key for Google Maps services, used server-side.
 - `REDIS_URL`: Connection URL for a Redis instance for production caching (e.g., `redis://:password@host:port`).
+ - `GOOGLE_MAPS_URL_CLIENT_ID`: Optional, for Static Maps URL signing (Premium Plan/Maps Platform client). Use with `GOOGLE_MAPS_URL_SIGNING_SECRET`.
+ - `GOOGLE_MAPS_URL_SIGNING_SECRET`: Optional, base64 URL-safe secret for Static Maps URL signing. When both client ID and secret are set, the app returns signed Static Maps URLs without exposing an API key.
 
 ### Application Behavior
 - `NODE_ENV`: Set to `production` or `development`. Affects certain behaviors like database logging.
