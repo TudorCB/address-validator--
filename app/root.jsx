@@ -2,6 +2,7 @@ import { Links, LiveReload, Meta, Outlet, Scripts, ScrollRestoration } from "@re
 import { useEffect } from "react";
 import { AppProvider } from "@shopify/polaris";
 import "@shopify/polaris/build/esm/styles.css";
+import "@shopify/polaris-viz/build/esm/styles.css";
 
 export const meta = () => ([
   { charSet: "utf-8" },
