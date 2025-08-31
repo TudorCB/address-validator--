@@ -2,8 +2,11 @@ import AdminLogsTable from "../components/AdminLogsTable.jsx";
 import { readLogs } from "../lib/logs.js";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
+import { authenticate } from "../shopify.server";
 
-export const loader = async () => {
+export const loader = async ({ request }) => {
+  // Ensure this page is accessed within an authenticated embedded admin session
+  await authenticate.admin(request);
   const logs = await readLogs({ limit: 100 });
   return json({ logs });
 };
