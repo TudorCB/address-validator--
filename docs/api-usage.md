@@ -108,7 +108,7 @@ curl -s -X POST http://localhost:3000/api/analytics/simulate \
 
 ## Admin CSV Export
 
-- GET `/admin/logs.csv?range=7d&segment=all`
+- GET `/admin/logs/csv?range=7d&segment=all`
 - Requires `Authorization` header. Exports non‑PII columns: timestamp, action, city/zip/province/country.
 
 ## Errors & Limits
@@ -123,4 +123,3 @@ curl -s -X POST http://localhost:3000/api/analytics/simulate \
 
 - Rate limits: per‑IP and per‑shop; see `RATE_LIMIT_PER_SHOP_MIN` for tuning.
 - Dev: use `dev.stub.jwt` only locally. In production, extensions must use real session tokens.
-

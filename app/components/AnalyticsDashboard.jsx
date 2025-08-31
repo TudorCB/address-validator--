@@ -289,7 +289,7 @@ export default function AnalyticsDashboard() {
                     size="slim"
                     onClick={async () => {
                       try {
-                        const url = `/admin/logs.csv?range=${range}&segment=${segment}`;
+              const url = `/admin/logs/csv?range=${range}&segment=${segment}`;
                         const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
                         if (!res.ok) throw new Error(`Export failed: ${res.status}`);
                         const blob = await res.blob();

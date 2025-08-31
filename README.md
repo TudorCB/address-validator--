@@ -86,7 +86,7 @@ All extensions use `getSessionToken()` to fetch a short‑lived token and call s
   - `GET /api/analytics/top-problems`
   - `GET /api/analytics/providers`
   - `POST /api/analytics/simulate` (what‑if impact of toggles)
-- Admin CSV export: `GET /admin/logs.csv`
+- Admin CSV export: `GET /admin/logs/csv`
 
 All endpoints require `Authorization: Bearer <session-token>` and enforce per‑IP and per‑shop rate limits. In development, the stub token `dev.stub.jwt` is accepted unless `SESSION_TOKEN_ALLOW_DEV_STUB=false`.
 
