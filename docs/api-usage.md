@@ -3,8 +3,8 @@
 This guide shows how to call the app’s APIs from UI extensions, Admin pages, and external tools (for testing). All endpoints require an Authorization header containing a short‑lived session token.
 
 - Extensions: obtain a token via `const token = await api.sessionToken.get()` (Checkout/Thank‑you/Customer Account).
-- Admin: use authenticated routes in the embedded app; for direct fetches from the browser, forward the token.
-- Dev convenience: when `NODE_ENV !== 'production'` (or `SESSION_TOKEN_ALLOW_DEV_STUB !== 'false'`), `Bearer dev.stub.jwt` is accepted.
+- Admin: use authenticated routes in the embedded app; for direct `fetch` calls from the browser, forward the token.
+- Dev convenience: when `NODE_ENV !== 'production'` (unless `SESSION_TOKEN_ALLOW_DEV_STUB=false`), the token `Bearer dev.stub.jwt` is accepted.
 
 ## Auth Header
 
@@ -33,14 +33,14 @@ This guide shows how to call the app’s APIs from UI extensions, Admin pages, a
 ```json
 {
   "status": "ok",
-  "action": "OK | CORRECTED | UNVERIFIED | BLOCK_MISSING_UNIT | BLOCK_PO_BOX | SUGGEST_PICKUP",
+  "action": "OK | CORRECTED | UNVERIFIED | BLOCK_MISSING_UNIT | BLOCK_PO_BOX | BLOCK_UNDELIVERABLE | SUGGEST_PICKUP",
   "message": "string",
   "correctedAddress": {"address1":"","address2":"","city":"","province":"","zip":"","country":""},
   "dpvFlags": {"deliverable":true,"missingSecondary":false,"poBox":false,"ambiguous":false},
   "rooftop": {"lat": 0, "lng": 0},
-  "mapImageUrl": "https://…" ,
+  "mapImageUrl": "https://...",
   "confidence": 0.0,
-  "settings": {"softMode":false, "autoApplyCorrections":true, …},
+  "settings": {"softMode":false, "autoApplyCorrections":true, "pickupRadiusKm": 25, "failedDeliveryCostUsd": 12},
   "providerResponseId": "id"
 }
 ```
@@ -72,7 +72,7 @@ curl -s -X POST http://localhost:3000/api/validate-address \
 
 ## Settings
 
-- GET `/api/settings` → `{ status: "ok", settings: { … } }`
+- GET `/api/settings` → `{ status: "ok", settings: { ... } }`
 - PATCH `/api/settings/update`
   - Fields accepted: `blockPoBoxes` (bool), `autoApplyCorrections` (bool), `softMode` (bool), `pickupRadiusKm` (number ≥ 0), `failedDeliveryCostUsd` (number ≥ 0)
 
@@ -86,7 +86,7 @@ curl -s -X PATCH http://localhost:3000/api/settings/update \
 
 ## Pickups
 
-- GET `/api/pickups` → `{ status: "ok", pickups: [ … ] }`
+- GET `/api/pickups` → `{ status: "ok", pickups: [ ... ] }`
 - POST `/api/pickups` → `{ status: "ok", pickup }` with `{ name, lat, lng }`
 - PATCH `/api/pickups/:id` → `{ status: "ok", pickup }`
 - DELETE `/api/pickups/:id` → `{ status: "ok" }`
@@ -95,8 +95,8 @@ curl -s -X PATCH http://localhost:3000/api/settings/update \
 
 - GET `/api/analytics/summary` → KPIs + daily trends
 - GET `/api/analytics/top-problems` → top by ZIP/city
-- GET `/api/analytics/providers` → provider metrics snapshot
-- POST `/api/analytics/simulate` → what‑if impact of toggles
+- GET `/api/analytics/providers` → provider metrics snapshot `{ provider: { ok, fail, p50 } }`
+- POST `/api/analytics/simulate` → what‑if impact of toggles on recent traffic
 
 Example (simulate):
 ```sh
@@ -121,5 +121,6 @@ curl -s -X POST http://localhost:3000/api/analytics/simulate \
 
 ## Notes
 
-- Rate limits: per‑IP and per‑shop; see `RATE_LIMIT_PER_SHOP_MIN` for tuning.
+- Rate limits: per‑IP and per‑shop; use `RATE_LIMIT_PER_SHOP_MIN` to tune per‑shop minute quota.
 - Dev: use `dev.stub.jwt` only locally. In production, extensions must use real session tokens.
+

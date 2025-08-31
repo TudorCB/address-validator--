@@ -15,6 +15,7 @@ import ClientOnly from "./ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("./StackedAreaChart.client.jsx"));
 import SafeIcon from "./SafeIcon.jsx";
 import { endpoints } from "../lib/api-endpoints.js";
+import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
 function KpiCard({ title, value, subtitle, trend, trendPositive, icon }) {
   return (
@@ -63,7 +64,8 @@ export default function AnalyticsDashboard() {
   const [security, setSecurity] = React.useState(null);
   const [providerMetrics, setProviderMetrics] = React.useState(null);
 
-  const token = "dev.stub.jwt"; // accepted by session-verify in dev
+  const [auth, setAuth] = React.useState({});
+  React.useEffect(() => { (async () => setAuth(await getAuthorizationHeader()))(); }, []);
 
   const trendData = React.useMemo(() => {
     const t = Array.isArray(summary?.trends) ? summary.trends : [];
@@ -75,7 +77,7 @@ export default function AnalyticsDashboard() {
   }, [summary]);
 
   async function fetchData() {
-    const headers = { authorization: `Bearer ${token}` };
+    const headers = auth;
     const s = await fetch(endpoints.analyticsSummary({ range, segment }), { headers }).then((r) => r.json());
     const p = await fetch(endpoints.analyticsTopProblems({ range, segment }), { headers }).then((r) => r.json());
     setSummary(s);
@@ -97,7 +99,7 @@ export default function AnalyticsDashboard() {
 
   async function fetchSettings() {
     try {
-      const res = await fetch(endpoints.settingsGet(), { headers: { authorization: `Bearer ${token}` } });
+      const res = await fetch(endpoints.settingsGet(), { headers: auth });
       const body = await res.json();
       const st = body?.settings || {};
       setPoBoxBlock(!!st.blockPoBoxes);
@@ -114,7 +116,7 @@ export default function AnalyticsDashboard() {
       const patch = { blockPoBoxes: poBoxBlock, softMode: !enforceUnit, autoApplyCorrections: !!autoApply };
       const res = await fetch(endpoints.settingsUpdate(), {
         method: "PATCH",
-        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        headers: { "content-type": "application/json", ...auth },
         body: JSON.stringify(patch),
       });
       if (!res.ok) throw new Error(`apply failed ${res.status}`);

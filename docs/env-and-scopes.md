@@ -1,62 +1,58 @@
-# Address Validator++  Environment & OAuth Scopes
+# Environment Variables & OAuth Scopes
 
-## Environment Variables
+This app uses Shopify’s Remix library for embedded apps, Prisma for persistence, optional Redis for rate limiting/caching, and several external validation providers. Configure via a `.env` file (copy from `.env.example` if present) or environment variables in your hosting environment.
 
-These variables are primarily for the server-only Remix application.
+## Core Shopify App
 
-### Core Configuration
-- `SHOPIFY_API_KEY`: Your Shopify app's client ID.
-- `SHOPIFY_API_SECRET`: Your Shopify app's client secret.
-- `SHOPIFY_APP_URL`: The public URL of your application.
-- `SCOPES`: Comma-separated list of Shopify OAuth scopes. This can be used as an alternative to the `access_scopes` in `shopify.app.toml`.
-- `SESSION_SECRET`: A long, random string used for signing session cookies.
+- `SHOPIFY_API_KEY`: App API key
+- `SHOPIFY_API_SECRET`: App API secret (used to verify session tokens)
+- `SHOPIFY_APP_URL`: Public app URL (used by OAuth callbacks)
+- `SCOPES`: Comma-separated list of Admin scopes
+- `SHOP_CUSTOM_DOMAIN` (optional): Custom shop domain for embedded auth
 
-### External Services
-- `GOOGLE_MAPS_API_KEY`: API key for Google Maps services, used server-side.
-- `REDIS_URL`: Connection URL for a Redis instance for production caching (e.g., `redis://:password@host:port`).
- - `GOOGLE_MAPS_URL_CLIENT_ID`: Optional, for Static Maps URL signing (Premium Plan/Maps Platform client). Use with `GOOGLE_MAPS_URL_SIGNING_SECRET`.
- - `GOOGLE_MAPS_URL_SIGNING_SECRET`: Optional, base64 URL-safe secret for Static Maps URL signing. When both client ID and secret are set, the app returns signed Static Maps URLs without exposing an API key.
+## Session Tokens
 
-### Application Behavior
-- `NODE_ENV`: Set to `production` or `development`. Affects certain behaviors like database logging.
-- `CACHE_TTL_SECONDS`: Time-to-live for cached items in seconds. Defaults to `86400` (24 hours).
-- `RATE_LIMIT_PER_MIN`: The number of requests allowed per minute. Defaults to `300`.
-- `SHOP_CUSTOM_DOMAIN`: Optional variable for handling custom shop domains.
-- `SESSION_TOKEN_ALLOW_DEV_STUB`: In dev only, allow the stub token `dev.stub.jwt` for local testing. Defaults to `true` when `NODE_ENV!="production"`. Set to `false` to enforce strict JWT verification.
+- `SESSION_SECRET` (optional): Override secret for JWT verification; defaults to `SHOPIFY_API_SECRET`
+- `SESSION_TOKEN_ALLOW_DEV_STUB` (default: true in dev): When not production, if `true`, accepts the stub token `dev.stub.jwt` for local testing
 
-### Development & Build
-- `PORT` or `SHOPIFY_APP_PORT`: Port for the main Remix app server. Defaults to `3000`.
-- `FRONTEND_PORT`: Port for the Vite development server. Defaults to `8002`.
-- `HOST`: Used during development to set `SHOPIFY_APP_URL`.
+## Data & Persistence
 
-### Optional (Future Integrations)
-- `UPS_API_KEY`
-- `DPV_API_KEY`
-- `GOOGLE_MAPS_URL_SIGNING_SECRET`: For signing Static Maps URLs.
+- `DATABASE_URL`: Prisma connection string (defaults to SQLite `file:dev.sqlite` via `prisma/schema.prisma`)
+- `REDIS_URL` (optional): Redis connection string for rate limits and cache (`redis://[:password@]host:port`)
+
+## Providers & Validation
+
+- `DPV_PROVIDER`: One of `usps`, `easypost`, `shippo` (falls back to a local heuristic stub on error)
+- `DPV_TIMEOUT_MS` (optional): Timeout per provider call (default 3000)
+- `USPS_WEBTOOLS_USERID` (required if `DPV_PROVIDER=usps`)
+- `EASYPOST_API_KEY` (required if `DPV_PROVIDER=easypost`)
+- `SHIPPO_API_TOKEN` (required if `DPV_PROVIDER=shippo`)
+- `GOOGLE_MAPS_API_KEY` (optional): Enables Google Address Validation; omitted in dev by default
+- `GOOGLE_MAPS_URL_CLIENT_ID` / `GOOGLE_MAPS_URL_SIGNING_SECRET` (optional): Enable signed Static Maps URLs without exposing an API key
+
+## Rate Limiting
+
+- Per-IP: enforced via Redis when `REDIS_URL` is set; in-memory fallback otherwise
+- Per-shop minute quota: `RATE_LIMIT_PER_SHOP_MIN` (default 600)
+
+## Caching
+
+- Address validation cache TTL: `CACHE_TTL_SECONDS` (default 86400)
+
+## Development & Build
+
+- `NODE_ENV`: `development` or `production`
+- `PORT` or `SHOPIFY_APP_PORT`: Remix server port (default 3000)
+- `HOST` (dev): Helps the Shopify CLI set `SHOPIFY_APP_URL`
 
 ## Shopify Admin OAuth Scopes
 
-Scopes can be defined in `shopify.app.toml` or via the `SCOPES` environment variable.
+Define scopes in `shopify.app.toml` or via `SCOPES`.
 
-- `read_checkouts`: To analyze and validate addresses during checkout.
-- `read_customers`, `write_customers`: For customer address hygiene features.
-- `read_orders`: For optional order reconciliation.
+Recommended for this app:
 
-> **Note:** Always confirm scope names against the target Shopify Admin API version you are using.
+- `read_checkouts`
+- `read_customers`, `write_customers`
+- `read_orders`
 
-## Security Notes
-- Never embed sensitive API keys (Google, UPS, etc.) in frontend extension bundles.
-- Extensions should use `getSessionToken` to get a short-lived token, which must be verified by the server-side application.
-- Session token verification uses HMAC (HS256) with `SHOPIFY_API_SECRET`. Ensure `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are set correctly.
-
-## Quick Install URL
-Use this link to install the app to your development store (per-user):
-
-https://quickstart-23c8bad8.myshopify.com/admin/oauth/authorize?client_id=5157c62e833750cbbe886fa1f9995997&scope=read_checkouts,read_customers,write_customers,read_orders&redirect_uri=https%3A%2F%2Fsn-architecture-specifics-lid.trycloudflare.com%2Fauth%2Fcallback&state=STATE&grant_options%5B%5D=per-user
-
-- Replace `STATE` with a cryptographically random nonce that your app validates on callback.
-- Scopes and redirect URI reflect the current configuration in `shopify.app.toml` and `.env`.
-
-Offline access token variant (optional):
-
-https://quickstart-23c8bad8.myshopify.com/admin/oauth/authorize?client_id=5157c62e833750cbbe886fa1f9995997&scope=read_checkouts,read_customers,write_customers,read_orders&redirect_uri=https%3A%2F%2Fsn-architecture-specifics-lid.trycloudflare.com%2Fauth%2Fcallback&state=STATE
+Always confirm scope names against your target Admin API version.

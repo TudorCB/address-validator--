@@ -3,6 +3,7 @@ import { normalizeAddress } from "./address-normalize.js";
 import { getSettings } from "./settings.js";
 import { dpvValidate, mapDpvToAction } from "./dpv.js";
 import { findNearestPickup } from "./pickups.js";
+import { cacheGet, cacheSet } from "./cache.js";
 
 /**
  * Minimal pipeline with DPV integration:
@@ -17,6 +18,36 @@ export async function validateAddressPipeline(payload) {
   const settings = await getSettings(shop);
   const address = payload?.address || null;
   const { cleaned } = normalizeAddress(address);
+
+  // Build a cache key using normalized address and policy toggles that affect outcomes
+  const cacheKey = (() => {
+    try {
+      const parts = [
+        String(cleaned.address1 || ""),
+        String(cleaned.address2 || ""),
+        String(cleaned.city || ""),
+        String(cleaned.province || ""),
+        String(cleaned.zip || ""),
+        String(cleaned.country || ""),
+      ];
+      const policy = [
+        settings.blockPoBoxes ? "bp1" : "bp0",
+        settings.softMode ? "sm1" : "sm0",
+        settings.autoApplyCorrections ? "aa1" : "aa0",
+        Number.isFinite(settings.pickupRadiusKm) ? `pr${settings.pickupRadiusKm}` : "pr-",
+      ];
+      return `val:${parts.join("|")}|${policy.join("|")}`;
+    } catch {
+      return null;
+    }
+  })();
+
+  if (cacheKey) {
+    const hit = await cacheGet(cacheKey);
+    if (hit && typeof hit === "object") {
+      return { ...hit, cacheKey };
+    }
+  }
 
   // DPV check (provider-backed or stub): evaluate PO Box and missing secondary flags
   let dpv;
@@ -43,7 +74,7 @@ export async function validateAddressPipeline(payload) {
           ? await findNearestPickup(shop, { lat: rooftop.lat, lng: rooftop.lng }, { maxKm: settings.pickupRadiusKm })
           : { nearest: null, distanceKm: null, inRange: false };
         if (inRange && nearest) {
-          return {
+          const out = {
             status: "ok",
             action: "SUGGEST_PICKUP",
             message: `Nearest pickup is ~${distanceKm.toFixed(2)} km: ${nearest.name}`,
@@ -58,11 +89,13 @@ export async function validateAddressPipeline(payload) {
           rooftop: rooftop || null,
           mapImageUrl,
           confidence: 0.7,
-          cacheKey: null,
+          cacheKey,
           settings,
           providerResponseId: dpv.providerResponseId || null,
           pickup: { nearest, distanceKm, radiusKm: settings.pickupRadiusKm },
         };
+          if (cacheKey) await cacheSet(cacheKey, out, Number(process.env.CACHE_TTL_SECONDS || 86400));
+          return out;
         }
       } catch {
         // ignore and fall through to default DPV result
@@ -84,7 +117,7 @@ export async function validateAddressPipeline(payload) {
       rooftop: null,
       mapImageUrl: null,
       confidence: 0.9,
-      cacheKey: null,
+      cacheKey,
       settings,
       providerResponseId: dpv.providerResponseId || null,
     };
@@ -93,6 +126,7 @@ export async function validateAddressPipeline(payload) {
       dpvResult.action = "UNVERIFIED";
       dpvResult.message = "Soft mode enabled - validation warnings only.";
     }
+    if (cacheKey) await cacheSet(cacheKey, dpvResult, Number(process.env.CACHE_TTL_SECONDS || 86400));
     return dpvResult;
   }
 
@@ -175,7 +209,7 @@ export async function validateAddressPipeline(payload) {
         rooftop: rooftop || null,
         mapImageUrl,
         confidence: 0.8,
-        cacheKey: null,
+        cacheKey,
         settings,
         providerResponseId: dpv.providerResponseId || null,
       };
@@ -199,7 +233,7 @@ export async function validateAddressPipeline(payload) {
         rooftop: rooftop || null,
         mapImageUrl,
         confidence: deliverable ? 0.95 : 0.7,
-        cacheKey: null,
+        cacheKey,
         settings,
         providerResponseId: dpv.providerResponseId || null,
       };
@@ -224,7 +258,7 @@ export async function validateAddressPipeline(payload) {
       rooftop: null,
       mapImageUrl: null,
       confidence: circuitOpen ? 0.5 : 0.9,
-      cacheKey: null,
+      cacheKey,
       settings,
       providerResponseId: dpv.providerResponseId || null,
     };
@@ -234,6 +268,9 @@ export async function validateAddressPipeline(payload) {
   if (settings.softMode && String(result.action).startsWith("BLOCK_")) {
     result.action = "UNVERIFIED";
     result.message = "Soft mode enabled - validation warnings only.";
+  }
+  if (cacheKey) {
+    try { await cacheSet(cacheKey, result, Number(process.env.CACHE_TTL_SECONDS || 86400)); } catch {}
   }
   return result;
 }

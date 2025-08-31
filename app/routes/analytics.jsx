@@ -9,6 +9,8 @@ import { EmptyAnalytics, EmptyProblems } from "../components/EmptyStates.jsx";
 const StackedAreaChartClient = React.lazy(() => import("../components/StackedAreaChart.client.jsx"));
 import { t } from "../lib/i18n.js";
 import { endpoints } from "../lib/api-endpoints.js";
+import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
+import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
 export const loader = async () => json({});
 
@@ -101,7 +103,7 @@ export default function AnalyticsPage() {
   async function fetchAll() {
     try {
       setIsLoading(true);
-      const headers = { authorization: "Bearer dev.stub.jwt" }; // TODO: replace with real session token
+      const headers = await getAuthorizationHeader();
       const [s, i, p, pm] = await Promise.all([
         fetch(endpoints.analyticsSummary({ range, segment }), { headers }).then(r => r.json()),
         fetch(endpoints.analyticsRecommendations({ range, segment }), { headers }).then(r => r.json()),
@@ -145,7 +147,7 @@ export default function AnalyticsPage() {
     try {
       const res = await fetch(endpoints.settingsUpdate(), {
         method: "PATCH",
-        headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
+        headers: { "content-type": "application/json", ...(await getAuthorizationHeader()) },
         body: JSON.stringify(patch),
       });
       if (!res.ok) throw new Error(`Toggle failed: ${res.status}`);
@@ -166,9 +168,9 @@ export default function AnalyticsPage() {
           content: t("analytics.export_csv"),
           onAction: async () => {
             try {
-              const token = "dev.stub.jwt"; // TODO: replace with real token
+              const auth = await getAuthorizationHeader();
               const url = `/admin/logs/csv?range=${range}&segment=${segment}`;
-              const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+              const res = await fetch(url, { headers: auth });
               if (!res.ok) throw new Error(`Export failed: ${res.status}`);
               const blob = await res.blob();
               const href = URL.createObjectURL(blob);
@@ -338,7 +340,7 @@ export default function AnalyticsPage() {
                               try {
                                 const res = await fetch(endpoints.settingsUpdate(), {
                                   method: "PATCH",
-                                  headers: { "content-type": "application/json", authorization: "Bearer dev.stub.jwt" },
+                                  headers: { "content-type": "application/json", ...(await getAuthorizationHeader()) },
                                   body: JSON.stringify(patch),
                                 });
                                 if (!res.ok) throw new Error("toggle failed");

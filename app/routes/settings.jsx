@@ -6,6 +6,7 @@ import AppFrame from "../components/AppFrame.jsx";
 import { getSettings, updateSettings } from "../lib/settings.js";
 import { authenticate } from "../shopify.server";
 import { t } from "../lib/i18n.js";
+import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
@@ -83,9 +84,10 @@ export default function SettingsPage() {
       setSimError(null);
       setSim(null);
       setSimLoading(true);
+      const headers = await getAuthorizationHeader();
       const res = await fetch(endpoints.analyticsSimulate(), {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: 'Bearer dev.stub.jwt' },
+        headers: { 'content-type': 'application/json', ...headers },
         body: JSON.stringify({ toggles: { blockPoBoxes, softMode } }),
       });
       const data = await res.json();

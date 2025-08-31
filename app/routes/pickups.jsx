@@ -5,13 +5,12 @@ import { Page, Layout, Card, Text, TextField, Button, InlineStack, DataTable, Mo
 import AppFrame from "../components/AppFrame.jsx";
 import { t } from "../lib/i18n.js";
 import { endpoints } from "../lib/api-endpoints.js";
+import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 
 export const loader = async () => json({});
 
-function useSessionHeaders() {
-  // For now, dev stub token consistent with rest of app
-  const token = "dev.stub.jwt"; // TODO: replace with real session token from App Bridge
-  return React.useMemo(() => ({ authorization: `Bearer ${token}` }), [token]);
+async function buildHeaders() {
+  return await getAuthorizationHeader();
 }
 
   function validateLatLng(lat, lng) {
@@ -24,7 +23,10 @@ function useSessionHeaders() {
 
 export default function PickupsPage() {
   useLoaderData();
-  const headers = useSessionHeaders();
+  const [headers, setHeaders] = React.useState({});
+  React.useEffect(() => {
+    (async () => setHeaders(await buildHeaders()))();
+  }, []);
 
   const [rows, setRows] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -54,7 +56,10 @@ export default function PickupsPage() {
     }
   }
 
-  React.useEffect(() => { refresh(); /* eslint-disable-line */ }, []);
+  React.useEffect(() => {
+    if (!headers || !headers.authorization) return;
+    refresh(); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [headers]);
 
   async function onAdd() {
     try {
