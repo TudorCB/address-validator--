@@ -35,6 +35,7 @@ export async function validateAddressPipeline(payload) {
         settings.softMode ? "sm1" : "sm0",
         settings.autoApplyCorrections ? "aa1" : "aa0",
         Number.isFinite(settings.pickupRadiusKm) ? `pr${settings.pickupRadiusKm}` : "pr-",
+        settings.updatedAt ? `sv${settings.updatedAt}` : "sv-",
       ];
       return `val:${parts.join("|")}|${policy.join("|")}`;
     } catch {

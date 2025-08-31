@@ -369,7 +369,23 @@ export default function AnalyticsDashboard() {
                               role="switch"
                               aria-label="Enable PO Box blocking"
                               checked={poBoxBlock}
-                              onChange={(e) => setPoBoxBlock(e.target.checked)}
+                              onChange={async (e) => {
+                                const next = e.target.checked;
+                                const prev = poBoxBlock;
+                                setPoBoxBlock(next);
+                                try {
+                                  const res = await fetch(endpoints.settingsUpdate(), {
+                                    method: "PATCH",
+                                    headers: { "content-type": "application/json", ...auth },
+                                    body: JSON.stringify({ blockPoBoxes: next }),
+                                  });
+                                  if (!res.ok) throw new Error("failed");
+                                } catch (err) {
+                                  console.error(err);
+                                  setPoBoxBlock(prev);
+                                  alert("Could not save setting. Reverted.");
+                                }
+                              }}
                               style={{ width: 40, height: 20, borderRadius: 10, appearance: 'none', backgroundColor: poBoxBlock ? '#00A047' : '#DDD', position: 'relative', cursor: 'pointer' }}
                             />
                             <Text as="p" variant="bodyMd">Block PO Boxes</Text>
@@ -384,7 +400,23 @@ export default function AnalyticsDashboard() {
                               role="switch"
                               aria-label="Enforce complete addresses"
                               checked={enforceUnit}
-                              onChange={(e) => setEnforceUnit(e.target.checked)}
+                              onChange={async (e) => {
+                                const next = e.target.checked;
+                                const prev = enforceUnit;
+                                setEnforceUnit(next);
+                                try {
+                                  const res = await fetch(endpoints.settingsUpdate(), {
+                                    method: "PATCH",
+                                    headers: { "content-type": "application/json", ...auth },
+                                    body: JSON.stringify({ softMode: !next }),
+                                  });
+                                  if (!res.ok) throw new Error("failed");
+                                } catch (err) {
+                                  console.error(err);
+                                  setEnforceUnit(prev);
+                                  alert("Could not save setting. Reverted.");
+                                }
+                              }}
                               style={{ width: 40, height: 20, borderRadius: 10, appearance: 'none', backgroundColor: enforceUnit ? '#00A047' : '#DDD', position: 'relative', cursor: 'pointer' }}
                             />
                             <Text as="p" variant="bodyMd">Enforce unit/apartment</Text>
@@ -399,7 +431,23 @@ export default function AnalyticsDashboard() {
                               role="switch"
                               aria-label="Auto-apply corrections"
                               checked={autoApply}
-                              onChange={(e) => setAutoApply(e.target.checked)}
+                              onChange={async (e) => {
+                                const next = e.target.checked;
+                                const prev = autoApply;
+                                setAutoApply(next);
+                                try {
+                                  const res = await fetch(endpoints.settingsUpdate(), {
+                                    method: "PATCH",
+                                    headers: { "content-type": "application/json", ...auth },
+                                    body: JSON.stringify({ autoApplyCorrections: next }),
+                                  });
+                                  if (!res.ok) throw new Error("failed");
+                                } catch (err) {
+                                  console.error(err);
+                                  setAutoApply(prev);
+                                  alert("Could not save setting. Reverted.");
+                                }
+                              }}
                               style={{ width: 40, height: 20, borderRadius: 10, appearance: 'none', backgroundColor: autoApply ? '#00A047' : '#DDD', position: 'relative', cursor: 'pointer' }}
                             />
                             <Text as="p" variant="bodyMd">Auto-apply corrections</Text>

@@ -52,5 +52,6 @@ function mapRow(row) {
     autoApplyCorrections: row.autoApplyCorrections ?? DEFAULTS.autoApplyCorrections,
     softMode: row.softMode ?? DEFAULTS.softMode,
     failedDeliveryCostUsd: row.failedDeliveryCostUsd ?? DEFAULTS.failedDeliveryCostUsd,
+    updatedAt: (row.updatedAt ? new Date(row.updatedAt).getTime() : Date.now()),
   };
 }

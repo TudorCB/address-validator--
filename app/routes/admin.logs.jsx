@@ -3,6 +3,8 @@ import { readLogs } from "../lib/logs.js";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
+import AppFrame from "../components/AppFrame.jsx";
+import { Page, Card } from "@shopify/polaris";
 
 export const loader = async ({ request }) => {
   // Ensure this page is accessed within an authenticated embedded admin session
@@ -14,10 +16,13 @@ export const loader = async ({ request }) => {
 export default function AdminLogsPage() {
   const { logs } = useLoaderData();
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Address Validator++  Recent Logs</h2>
-      <p style={{ color: "#666" }}>Showing up to 100 latest entries (in-memory).</p>
-      <AdminLogsTable logs={logs} />
-    </div>
+    <AppFrame>
+      <Page title="Recent Logs" subtitle="Address Validator++">
+        <Card>
+          <div style={{ padding: 12, color: '#616161' }}>Showing up to 100 latest entries.</div>
+          <AdminLogsTable logs={logs} />
+        </Card>
+      </Page>
+    </AppFrame>
   );
 }
