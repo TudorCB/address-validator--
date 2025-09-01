@@ -1,9 +1,11 @@
 import { Links, LiveReload, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { useEffect } from "react";
-import { AppProvider } from "@shopify/polaris";
+import { AppProvider, Frame } from "@shopify/polaris";
+import enTranslations from "@shopify/polaris/locales/en.json";
 import "@shopify/polaris/build/esm/styles.css";
 import "@shopify/polaris-viz/build/esm/styles.css";
+import { ToastProvider } from "./components/ToastContext.jsx";
 
 export const meta = () => ([
   { charSet: "utf-8" },
@@ -18,7 +20,7 @@ export const loader = async () => {
 export default function App() {
   const { apiKey } = useLoaderData();
   // Optional: prefer system theme; Polaris handles dark mode automatically if desired
-  useEffect(() => {}, []);
+  useEffect(() => { }, []);
   return (
     <html lang="en">
       <head>
@@ -28,8 +30,12 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <AppProvider>
-          <Outlet />
+        <AppProvider i18n={enTranslations}>
+          <Frame>
+            <ToastProvider>
+              <Outlet />
+            </ToastProvider>
+          </Frame>
         </AppProvider>
         <ScrollRestoration />
         <Scripts />

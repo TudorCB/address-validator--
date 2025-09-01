@@ -1,12 +1,9 @@
-import { redirect } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
+import { json } from "@remix-run/node";
+import AnalyticsDashboard from "../components/AnalyticsDashboard.jsx";
 
-export const loader = async ({ request }) => {
-  await authenticate.admin(request);
-  throw redirect("/index");
-};
+export const loader = async () => json({});
 
-export default function AppIndexRedirect() {
-  return null;
+export default function AppIndex() {
+  return <AnalyticsDashboard />;
 }
 

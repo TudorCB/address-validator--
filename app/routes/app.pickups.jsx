@@ -2,7 +2,6 @@ import React from "react";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { Page, Layout, Card, Text, TextField, Button, InlineStack, DataTable, Modal, Box, Banner } from "@shopify/polaris";
-import AppFrame from "../components/AppFrame.jsx";
 import { t } from "../lib/i18n.js";
 import { endpoints } from "../lib/api-endpoints.js";
 import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
@@ -13,13 +12,13 @@ async function buildHeaders() {
   return await getAuthorizationHeader();
 }
 
-  function validateLatLng(lat, lng) {
-    const la = Number(lat);
-    const ln = Number(lng);
-    if (!Number.isFinite(la) || la < -90 || la > 90) return t("errors.invalid_lat_lng");
-    if (!Number.isFinite(ln) || ln < -180 || ln > 180) return t("errors.invalid_lat_lng");
-    return null;
-  }
+function validateLatLng(lat, lng) {
+  const la = Number(lat);
+  const ln = Number(lng);
+  if (!Number.isFinite(la) || la < -90 || la > 90) return t("errors.invalid_lat_lng");
+  if (!Number.isFinite(ln) || ln < -180 || ln > 180) return t("errors.invalid_lat_lng");
+  return null;
+}
 
 export default function PickupsPage() {
   useLoaderData();
@@ -120,76 +119,74 @@ export default function PickupsPage() {
   }
 
   const tableRows = rows.map((r) => [r.name, String(r.lat), String(r.lng),
-    <InlineStack key={r.id} gap="200">
-      <Button onClick={() => setEditing({ ...r })}>{t("pickups.edit")}</Button>
-      <Button tone="critical" onClick={() => onDelete(r.id)}>{t("pickups.delete")}</Button>
-    </InlineStack>
+  <InlineStack key={r.id} gap="200">
+    <Button onClick={() => setEditing({ ...r })}>{t("pickups.edit")}</Button>
+    <Button tone="critical" onClick={() => onDelete(r.id)}>{t("pickups.delete")}</Button>
+  </InlineStack>
   ]);
 
   return (
-    <AppFrame>
-      <Page title={t("pickups.title")} subtitle={t("pickups.subtitle")}>
-        <Layout>
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 16 }}>
-                <Text as="h3" variant="headingMd">{t("pickups.add_title")}</Text>
-                <div style={{ marginTop: 12 }}>
-                  <InlineStack gap="300" wrap={false}>
-                    <TextField label={t("pickups.name")} value={name} onChange={setName} autoComplete="off" />
-                    <TextField label={t("pickups.latitude")} type="number" value={lat} onChange={setLat} autoComplete="off" />
-                    <TextField label={t("pickups.longitude")} type="number" value={lng} onChange={setLng} autoComplete="off" />
-                    <div style={{ display: "flex", alignItems: "end" }}>
-                      <Button variant="primary" loading={saving} onClick={onAdd}>{t("pickups.add")}</Button>
-                    </div>
-                  </InlineStack>
-                  {formError ? (
-                    <Box paddingBlockStart="200" aria-live="polite" role="status"><Banner status="critical" title={formError} /></Box>
-                  ) : null}
-                </div>
+    <Page title={t("pickups.title")} subtitle={t("pickups.subtitle")}>
+      <Layout>
+        <Layout.Section>
+          <Card>
+            <div style={{ padding: 16 }}>
+              <Text as="h3" variant="headingMd">{t("pickups.add_title")}</Text>
+              <div style={{ marginTop: 12 }}>
+                <InlineStack gap="300" wrap={false}>
+                  <TextField label={t("pickups.name")} value={name} onChange={setName} autoComplete="off" />
+                  <TextField label={t("pickups.latitude")} type="number" value={lat} onChange={setLat} autoComplete="off" />
+                  <TextField label={t("pickups.longitude")} type="number" value={lng} onChange={setLng} autoComplete="off" />
+                  <div style={{ display: "flex", alignItems: "end" }}>
+                    <Button variant="primary" loading={saving} onClick={onAdd}>{t("pickups.add")}</Button>
+                  </div>
+                </InlineStack>
+                {formError ? (
+                  <Box paddingBlockStart="200" aria-live="polite" role="status"><Banner status="critical" title={formError} /></Box>
+                ) : null}
               </div>
-            </Card>
-          </Layout.Section>
+            </div>
+          </Card>
+        </Layout.Section>
 
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 16 }}>
-                <Text as="h3" variant="headingMd">{t("pickups.locations")}</Text>
-                <div style={{ marginTop: 12 }}>
-                  {error ? (
-                    <Box aria-live="polite" role="status"><Banner status="critical" title={String(error)} /></Box>
-                  ) : null}
-                  <DataTable
-                    columnContentTypes={["text", "numeric", "numeric", "text"]}
-                    headings={[t("pickups.name"), t("pickups.latitude"), t("pickups.longitude"), "Actions"]}
-                    rows={loading ? [] : tableRows}
-                    footerContent={loading ? t("pickups.loading") : t("pickups.count", { count: rows.length })}
-                  />
-                </div>
+        <Layout.Section>
+          <Card>
+            <div style={{ padding: 16 }}>
+              <Text as="h3" variant="headingMd">{t("pickups.locations")}</Text>
+              <div style={{ marginTop: 12 }}>
+                {error ? (
+                  <Box aria-live="polite" role="status"><Banner status="critical" title={String(error)} /></Box>
+                ) : null}
+                <DataTable
+                  columnContentTypes={["text", "numeric", "numeric", "text"]}
+                  headings={[t("pickups.name"), t("pickups.latitude"), t("pickups.longitude"), "Actions"]}
+                  rows={loading ? [] : tableRows}
+                  footerContent={loading ? t("pickups.loading") : t("pickups.count", { count: rows.length })}
+                />
               </div>
-            </Card>
-          </Layout.Section>
-        </Layout>
+            </div>
+          </Card>
+        </Layout.Section>
+      </Layout>
 
-        <Modal
-          open={!!editing}
-          onClose={() => { setEditing(null); setFormError(null); }}
-          title={t("pickups.edit_title")}
-          primaryAction={{ content: t("settings.save"), onAction: onSaveEdit, loading: saving }}
-          secondaryActions={[{ content: t("settings.cancel"), onAction: () => setEditing(null) }]}
-        >
-          <Modal.Section>
-            {editing ? (
-              <InlineStack gap="300" wrap>
-                <TextField label={t("pickups.name")} value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
-                <TextField label={t("pickups.latitude")} type="number" value={String(editing.lat)} onChange={(v) => setEditing({ ...editing, lat: v })} />
-                <TextField label={t("pickups.longitude")} type="number" value={String(editing.lng)} onChange={(v) => setEditing({ ...editing, lng: v })} />
-              </InlineStack>
-            ) : null}
-            {formError ? <Box paddingBlockStart="200"><Banner status="critical" title={formError} /></Box> : null}
-          </Modal.Section>
-        </Modal>
-      </Page>
-    </AppFrame>
+      <Modal
+        open={!!editing}
+        onClose={() => { setEditing(null); setFormError(null); }}
+        title={t("pickups.edit_title")}
+        primaryAction={{ content: t("settings.save"), onAction: onSaveEdit, loading: saving }}
+        secondaryActions={[{ content: t("settings.cancel"), onAction: () => setEditing(null) }]}
+      >
+        <Modal.Section>
+          {editing ? (
+            <InlineStack gap="300" wrap>
+              <TextField label={t("pickups.name")} value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
+              <TextField label={t("pickups.latitude")} type="number" value={String(editing.lat)} onChange={(v) => setEditing({ ...editing, lat: v })} />
+              <TextField label={t("pickups.longitude")} type="number" value={String(editing.lng)} onChange={(v) => setEditing({ ...editing, lng: v })} />
+            </InlineStack>
+          ) : null}
+          {formError ? <Box paddingBlockStart="200"><Banner status="critical" title={formError} /></Box> : null}
+        </Modal.Section>
+      </Modal>
+    </Page>
   );
 }
