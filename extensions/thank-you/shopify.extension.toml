@@ -1,7 +1,8 @@
 name = "Address Validator++  Thank You"
-type = "checkout_ui_extension"
+uid = "15060dc0-973a-180d-31f4-e135333728a3a1aad439"
+type = "ui_extension"
+surface = "checkout"
 api_version = "2025-01"
 extension_points = [
-  "purchase.thank-you.block.render"
+  { target = "purchase.thank-you.block.render", module = "./src/index.jsx" }
 ]
-

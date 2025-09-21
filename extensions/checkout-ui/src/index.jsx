@@ -228,6 +228,6 @@ function CheckoutAddressValidator() {
 }
 
 export default reactExtension(
-  "purchase.checkout.delivery-address.render",
+  "purchase.checkout.delivery-address.render-after",
   () => <CheckoutAddressValidator />
 );

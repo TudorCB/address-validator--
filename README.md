@@ -114,6 +114,26 @@ See `docs/api-usage.md` for request/response shapes and examples.
 
 Environment variables and OAuth scopes are documented in `docs/env-and-scopes.md`.
 
+## Dev on Windows & WSL/Linux
+
+- Use the local Shopify CLI for correct native binaries.
+  - This repo includes `@shopify/cli` in devDependencies so npm resolves a platform‑correct binary.
+  - Standard dev: `npm run dev`
+  - One‑shot fallback (always latest CLI): `npm run dev:npx`
+- Install dependencies per OS. Do not copy `node_modules` between Windows and WSL/Linux.
+  - On Windows: `npm ci`
+  - On WSL/Linux: `npm ci`
+  - If you switch OS, clean and reinstall: `rm -rf node_modules package-lock.json && npm ci`
+- WSL specifics (avoid Windows global CLI):
+  - Prefer `npm run dev` so npm uses `./node_modules/.bin/shopify` from this project.
+  - If PATH in WSL contains a Windows npm global (e.g., `/mnt/c/Users/<you>/AppData/Roaming/npm`), it can cause esbuild mismatch errors.
+    - Quick check: `echo $PATH | tr ':' '\n' | grep -i appdata || true`
+    - Safe workaround without changing PATH: use `npm run dev` or `npm run dev:npx`.
+  - Optional convenience in WSL: `alias shopify="$(npm bin)/shopify"` in `~/.bashrc` so `shopify` resolves locally.
+- Node version: use a version matching `package.json` engines (`^18.20`, `^20.10`, or `>=21`).
+  - This repo includes an `.nvmrc` pinned to `20.10.0`.
+  - With nvm: `nvm use` (and `nvm install` the first time).
+
 ## Configuration Highlights
 
 - DPV providers: set `DPV_PROVIDER` to `usps`, `easypost`, or `shippo`. Missing credentials degrade to a local stub.

@@ -1,9 +1,10 @@
 name = "Address Validator++  Checkout UI"
-type = "checkout_ui_extension"
+uid = "720aceaa-89e9-38ae-eb4f-2de1228dfab128dab746"
+type = "ui_extension"
+surface = "checkout"
 api_version = "2025-01"
 extension_points = [
-  "purchase.checkout.delivery-address.render",
-  "purchase.checkout.block.render"
+  { target = "purchase.checkout.delivery-address.render-after", module = "./src/index.jsx" }
 ]
 
 capabilities = { block_progress = true, network_access = true }

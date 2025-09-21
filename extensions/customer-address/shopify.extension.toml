@@ -1,4 +1,5 @@
 name = "Address Validator++  Customer Addresses"
+uid = "a2d7f1ed-4437-ff81-0f72-f330971dcdeaa247e184"
 type = "ui_extension"
 surface = "customer-account"
 api_version = "2025-01"
