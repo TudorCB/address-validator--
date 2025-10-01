@@ -1,4 +1,4 @@
-import { Text } from "@shopify/polaris";
+import { Text, Box, Grid, BlockStack } from "@shopify/polaris";
 import Section from "./Section.jsx";
 import React from "react";
 
@@ -11,19 +11,27 @@ export default function ProviderHealthCard({ health }) {
 
   return (
     <Section title="Provider health">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <div>
-          <Text as="p" variant="bodySm" tone="subdued">Success rate</Text>
-          <div style={{ fontWeight: 600, fontSize: 18 }}>{successRate}%</div>
-        </div>
-        <div>
-          <Text as="p" variant="bodySm" tone="subdued">p50 latency</Text>
-          <div style={{ fontWeight: 600, fontSize: 18 }}>{p50 != null ? `${p50} ms` : "—"}</div>
-        </div>
-      </div>
-      <div style={{ marginTop: 10, color: "#616161" }}>
-        <Text as="p" variant="bodySm">Watch for drops in success or spikes in latency. The dashboard will fall back to soft warnings if providers struggle.</Text>
-      </div>
+      <Box paddingBlockStart="300">
+        <Grid columns={{ sm: 2 }} gap="400">
+          <Grid.Cell>
+            <BlockStack gap="150">
+              <Text as="p" variant="bodySm" tone="subdued">Success rate</Text>
+              <Text as="p" variant="headingLg">{successRate}%</Text>
+            </BlockStack>
+          </Grid.Cell>
+          <Grid.Cell>
+            <BlockStack gap="150">
+              <Text as="p" variant="bodySm" tone="subdued">p50 latency</Text>
+              <Text as="p" variant="headingLg">{p50 != null ? `${p50} ms` : "—"}</Text>
+            </BlockStack>
+          </Grid.Cell>
+        </Grid>
+      </Box>
+      <Box paddingBlockStart="300">
+        <Text as="p" variant="bodySm" tone="subdued">
+          Watch for drops in success or spikes in latency. The dashboard will fall back to soft warnings if providers struggle.
+        </Text>
+      </Box>
     </Section>
   );
 }

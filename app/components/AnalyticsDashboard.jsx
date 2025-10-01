@@ -10,6 +10,16 @@ import {
   Box,
   BlockStack,
   Badge,
+  FormLayout,
+  SettingToggle,
+  Banner,
+  Divider,
+  SkeletonPage,
+  SkeletonDisplayText,
+  SkeletonBodyText,
+  Spinner,
+  EmptyState,
+  Layout,
 } from "@shopify/polaris";
 import ClientOnly from "./ClientOnly.jsx";
 const StackedAreaChartClient = React.lazy(() => import("./StackedAreaChart.client.jsx"));
@@ -22,15 +32,25 @@ import { getAuthorizationHeader } from "../lib/admin-auth.client.js";
 function KpiCard({ title, value, subtitle, trend, trendPositive, icon }) {
   return (
     <Card>
-      <Box padding="400" background="bg-surface-secondary" border="border" borderRadius="300">
-        <InlineStack align="space-between" blockAlign="center">
-          <BlockStack gap="150">
+      <Box padding="400">
+        <InlineStack align="space-between" blockAlign="start">
+          <BlockStack gap="100">
             <Text as="h3" variant="headingMd">{title}</Text>
             <Text as="p" variant="heading2xl">{value}</Text>
-            {subtitle ? <Text as="p" tone="subdued">{subtitle}</Text> : null}
-            {trend ? <Text as="p" tone={trendPositive ? "success" : "critical"}>{trend}</Text> : null}
+            {subtitle && (
+              <Text as="p" variant="bodySm" tone="subdued">{subtitle}</Text>
+            )}
+            {trend && (
+              <Badge tone={trendPositive ? "success" : "critical"}>
+                {trend}
+              </Badge>
+            )}
           </BlockStack>
-          {icon ? <div aria-hidden style={{ fontSize: 28 }}>{icon}</div> : null}
+          {icon && (
+            <Box color="text-subdued">
+              {icon}
+            </Box>
+          )}
         </InlineStack>
       </Box>
     </Card>
@@ -39,15 +59,28 @@ function KpiCard({ title, value, subtitle, trend, trendPositive, icon }) {
 
 function CircularPickupRadiusViz() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
-      <div style={{
-        width: '120px', height: '120px', borderRadius: '50%',
-        background: 'linear-gradient(135deg, #E8F5E8, #C1E8C1)',
-        border: '2px solid #B8E6B8', display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#2D7A2D' }} />
-      </div>
-    </div>
+    <Box padding="400">
+      <InlineStack align="center">
+        <Box
+          width="120px"
+          height="120px"
+          borderRadius="50%"
+          background="bg-surface-secondary"
+          border="border-subdued"
+          borderWidth="025"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Box
+            width="8px"
+            height="8px"
+            borderRadius="50%"
+            background="bg-success-strong"
+          />
+        </Box>
+      </InlineStack>
+    </Box>
   );
 }
 
@@ -69,7 +102,8 @@ export default function AnalyticsDashboard() {
   const [security, setSecurity] = React.useState(null);
   const [providerMetrics, setProviderMetrics] = React.useState(null);
   const [cacheMetrics, setCacheMetrics] = React.useState(null);
-
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isExporting, setIsExporting] = React.useState(false);
   const [auth, setAuth] = React.useState({});
   React.useEffect(() => { (async () => setAuth(await getAuthorizationHeader()))(); }, []);
 
@@ -83,29 +117,35 @@ export default function AnalyticsDashboard() {
   }, [summary]);
 
   async function fetchData() {
-    const headers = auth;
-    const s = await fetch(endpoints.analyticsSummary({ range, segment }), { headers }).then((r) => r.json());
-    const p = await fetch(endpoints.analyticsTopProblems({ range, segment }), { headers }).then((r) => r.json());
-    setSummary(s);
-    setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
+    setIsLoading(true);
     try {
-      const sec = await fetch(endpoints.securityStats(), { headers }).then((r) => r.json());
-      setSecurity(sec?.stats || null);
-    } catch (e) {
-      console.error("security stats fetch failed", e);
-    }
-    try {
-      const prov = await fetch(endpoints.analyticsProviders(), { headers }).then((r) => r.json());
-      // normalize to provider object
-      setProviderMetrics(prov?.provider || prov || null);
-    } catch (e) {
-      console.error("provider metrics fetch failed", e);
-    }
-    try {
-      const cm = await fetch('/api/analytics/cache', { headers }).then(r => r.json());
-      setCacheMetrics(cm?.cache || null);
-    } catch (e) {
-      console.error('cache metrics fetch failed', e);
+      const headers = auth;
+      const s = await fetch(endpoints.analyticsSummary({ range, segment }), { headers }).then((r) => r.json());
+      const p = await fetch(endpoints.analyticsTopProblems({ range, segment }), { headers }).then((r) => r.json());
+      setSummary(s);
+      setProblems({ topByZip: p?.topByZip || [], topByCity: p?.topByCity || [] });
+
+      try {
+        const sec = await fetch(endpoints.securityStats(), { headers }).then((r) => r.json());
+        setSecurity(sec?.stats || null);
+      } catch (e) {
+        console.error("security stats fetch failed", e);
+      }
+      try {
+        const prov = await fetch(endpoints.analyticsProviders(), { headers }).then((r) => r.json());
+        // normalize to provider object
+        setProviderMetrics(prov?.provider || prov || null);
+      } catch (e) {
+        console.error("provider metrics fetch failed", e);
+      }
+      try {
+        const cm = await fetch('/api/analytics/cache', { headers }).then(r => r.json());
+        setCacheMetrics(cm?.cache || null);
+      } catch (e) {
+        console.error('cache metrics fetch failed', e);
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -153,32 +193,91 @@ export default function AnalyticsDashboard() {
   const pctPoBox = pct(k?.causes?.blockedPoBox || 0);
   const pctMissingUnit = pct(k?.causes?.blockedMissingUnit || 0);
 
+  if (isLoading && !summary) {
+    return (
+      <SkeletonPage primaryAction breadcrumbs>
+        <Layout>
+          <Layout.Section>
+            <Card>
+              <Box padding="400">
+                <SkeletonDisplayText size="small" />
+                <Box paddingBlockStart="200">
+                  <SkeletonBodyText lines={3} />
+                </Box>
+              </Box>
+            </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Card>
+              <Box padding="400">
+                <SkeletonDisplayText size="small" />
+                <Box paddingBlockStart="200">
+                  <SkeletonBodyText lines={2} />
+                </Box>
+              </Box>
+            </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Card>
+              <Box padding="400">
+                <SkeletonDisplayText size="small" />
+                <Box paddingBlockStart="200">
+                  <SkeletonBodyText lines={2} />
+                </Box>
+              </Box>
+            </Card>
+          </Layout.Section>
+        </Layout>
+      </SkeletonPage>
+    );
+  }
+
   return (
     <Box>
-      {/* Header with Branding */}
+      {/* Modern Header with Navigation */}
       <Box paddingBlockEnd="400">
-        <InlineStack align="space-between" blockAlign="center">
-          <InlineStack gap="200" blockAlign="center">
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#00A047', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <SafeIcon name="StoreIcon" />
-            </div>
-            <Text as="h1" variant="headingLg">Address Validator ++</Text>
-          </InlineStack>
-          <Select
-            label="Time Range"
-            labelHidden
-            options={[
-              { label: "Last 7 days", value: "7d" },
-              { label: "Last 14 days", value: "14d" },
-              { label: "Last 30 days", value: "30d" },
-            ]}
-            value={range}
-            onChange={setRange}
-          />
-        </InlineStack>
+        <Card>
+          <Box padding="400">
+            <InlineStack align="space-between" blockAlign="center">
+              <InlineStack gap="300" blockAlign="center">
+                <Box
+                  width="48px"
+                  height="48px"
+                  borderRadius="200"
+                  background="bg-surface-success"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <SafeIcon name="StorefrontIcon" />
+                </Box>
+                <BlockStack gap="100">
+                  <Text as="h1" variant="headingLg" fontWeight="medium">Address Validator++</Text>
+                  <Text as="p" variant="bodySm" tone="subdued">Monitor and manage address validation performance</Text>
+                </BlockStack>
+              </InlineStack>
+              <Select
+                label="Time Range"
+                labelHidden
+                options={[
+                  { label: "Last 7 days", value: "7d" },
+                  { label: "Last 14 days", value: "14d" },
+                  { label: "Last 30 days", value: "30d" },
+                ]}
+                value={range}
+                onChange={setRange}
+              />
+            </InlineStack>
+          </Box>
+        </Card>
       </Box>
 
-      <Page title="Key Metrics" subtitle="Address Validator++">
+      <Page
+        title="Dashboard"
+        subtitle="Key performance metrics and insights"
+        accessibilityLabel="Address Validator Dashboard"
+        breadcrumbs={[{ content: 'Home', url: '/' }]}
+      >
         {/* KPIs */}
         <Grid columns={{ sm: 1, md: 3, lg: 3 }} gap="400">
           <Grid.Cell>
@@ -322,21 +421,31 @@ export default function AnalyticsDashboard() {
                   </InlineStack>
                   <Box paddingBlockStart="300">
                     <BlockStack gap="200">
-                      {(problems.topByZip || []).slice(0, 5).map((r, index) => {
-                        const zipDisplay = r.key ? r.key.split('-').pop() : `ZIP ${index + 1}`;
-                        return (
-                          <InlineStack key={r.key || index} align="space-between">
-                            <Text as="p">{zipDisplay}</Text>
-                            <Text as="p">{(r.total || 0).toLocaleString()}</Text>
-                          </InlineStack>
-                        );
-                      })}
+                      {(problems.topByZip || []).length > 0 ? (
+                        (problems.topByZip || []).slice(0, 5).map((r, index) => {
+                          const zipDisplay = r.key ? r.key.split('-').pop() : `ZIP ${index + 1}`;
+                          return (
+                            <InlineStack key={r.key || index} align="space-between">
+                              <Text as="p">{zipDisplay}</Text>
+                              <Text as="p">{(r.total || 0).toLocaleString()}</Text>
+                            </InlineStack>
+                          );
+                        })
+                      ) : (
+                        <EmptyState
+                          heading="No problem ZIPs found"
+                          image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                        >
+                          <p>All ZIP codes are performing well</p>
+                        </EmptyState>
+                      )}
                     </BlockStack>
                   </Box>
                   <Box paddingBlockStart="400">
                     <Button
                       size="slim"
                       onClick={async () => {
+                        setIsExporting(true);
                         try {
                           const url = `/admin/logs/csv?range=${range}&segment=${segment}`;
                           const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
@@ -352,10 +461,20 @@ export default function AnalyticsDashboard() {
                           URL.revokeObjectURL(href);
                         } catch (e) {
                           console.error(e);
+                        } finally {
+                          setIsExporting(false);
                         }
                       }}
+                      disabled={isExporting}
                     >
-                      Export logs to CSV
+                      {isExporting ? (
+                        <InlineStack gap="200">
+                          <Spinner size="small" />
+                          <span>Exporting...</span>
+                        </InlineStack>
+                      ) : (
+                        "Export logs to CSV"
+                      )}
                     </Button>
                   </Box>
                 </Box>
@@ -372,12 +491,21 @@ export default function AnalyticsDashboard() {
                   </InlineStack>
                   <Box paddingBlockStart="300">
                     <BlockStack gap="200">
-                      {(problems.topByCity || []).slice(0, 5).map((r, index) => (
-                        <InlineStack key={r.key || index} align="space-between">
-                          <Text as="p">{r.key || `City ${index + 1}`}</Text>
-                          <Text as="p">{(r.total || 0).toLocaleString()}</Text>
-                        </InlineStack>
-                      ))}
+                      {(problems.topByCity || []).length > 0 ? (
+                        (problems.topByCity || []).slice(0, 5).map((r, index) => (
+                          <InlineStack key={r.key || index} align="space-between">
+                            <Text as="p">{r.key || `City ${index + 1}`}</Text>
+                            <Text as="p">{(r.total || 0).toLocaleString()}</Text>
+                          </InlineStack>
+                        ))
+                      ) : (
+                        <EmptyState
+                          heading="No problem cities found"
+                          image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                        >
+                          <p>All cities are performing well</p>
+                        </EmptyState>
+                      )}
                     </BlockStack>
                   </Box>
                 </Box>
@@ -387,108 +515,93 @@ export default function AnalyticsDashboard() {
             {/* Right: Insights + Pickup radius */}
             <Grid.Cell>
               <BlockStack gap="400">
-                {/* Insights Card */}
+                {/* Settings Card */}
                 <Card>
                   <Box padding="400">
-                    <Text as="h3" variant="headingMd">Insights</Text>
+                    <Text as="h3" variant="headingMd">Validation Settings</Text>
                     <Box paddingBlockStart="300">
-                      <BlockStack gap="300">
-                        <BlockStack gap="150">
-                          <InlineStack blockAlign="center" gap="200">
-                            <input
-                              type="checkbox"
-                              role="switch"
-                              aria-label="Enable PO Box blocking"
-                              checked={poBoxBlock}
-                              onChange={async (e) => {
-                                const next = e.target.checked;
-                                const prev = poBoxBlock;
-                                setPoBoxBlock(next);
-                                try {
-                                  const res = await fetch(endpoints.settingsUpdate(), {
-                                    method: "PATCH",
-                                    headers: { "content-type": "application/json", ...auth },
-                                    body: JSON.stringify({ blockPoBoxes: next }),
-                                  });
-                                  if (!res.ok) throw new Error("failed");
-                                  show("PO Box policy updated.");
-                                } catch (err) {
-                                  console.error(err);
-                                  setPoBoxBlock(prev);
-                                  alert("Could not save setting. Reverted.");
-                                }
-                              }}
-                              style={{ width: 40, height: 20, borderRadius: 10, appearance: 'none', backgroundColor: poBoxBlock ? '#00A047' : '#DDD', position: 'relative', cursor: 'pointer' }}
-                            />
-                            <Text as="p" variant="bodyMd">Block PO Boxes</Text>
-                          </InlineStack>
-                          <Text tone="subdued">{pctPoBox}% of addresses in the last 30 days were PO Boxes.</Text>
-                        </BlockStack>
+                      <FormLayout>
+                        <SettingToggle
+                          action={{
+                            content: poBoxBlock ? "Disable" : "Enable",
+                            onAction: async () => {
+                              const next = !poBoxBlock;
+                              setPoBoxBlock(next);
+                              try {
+                                const res = await fetch(endpoints.settingsUpdate(), {
+                                  method: "PATCH",
+                                  headers: { "content-type": "application/json", ...auth },
+                                  body: JSON.stringify({ blockPoBoxes: next }),
+                                });
+                                if (!res.ok) throw new Error("failed");
+                                show("PO Box policy updated.");
+                              } catch (err) {
+                                console.error(err);
+                                setPoBoxBlock(!next);
+                                show("Could not save setting. Reverted.", { status: "error" });
+                              }
+                            }
+                          }}
+                          enabled={poBoxBlock}
+                          title="Block PO Boxes"
+                        >
+                          {pctPoBox}% of addresses in the last 30 days were PO Boxes.
+                        </SettingToggle>
 
-                        <BlockStack gap="150">
-                          <InlineStack blockAlign="center" gap="200">
-                            <input
-                              type="checkbox"
-                              role="switch"
-                              aria-label="Enforce complete addresses"
-                              checked={enforceUnit}
-                              onChange={async (e) => {
-                                const next = e.target.checked;
-                                const prev = enforceUnit;
-                                setEnforceUnit(next);
-                                try {
-                                  const res = await fetch(endpoints.settingsUpdate(), {
-                                    method: "PATCH",
-                                    headers: { "content-type": "application/json", ...auth },
-                                    body: JSON.stringify({ softMode: !next }),
-                                  });
-                                  if (!res.ok) throw new Error("failed");
-                                  show("Validation mode updated.");
-                                } catch (err) {
-                                  console.error(err);
-                                  setEnforceUnit(prev);
-                                  alert("Could not save setting. Reverted.");
-                                }
-                              }}
-                              style={{ width: 40, height: 20, borderRadius: 10, appearance: 'none', backgroundColor: enforceUnit ? '#00A047' : '#DDD', position: 'relative', cursor: 'pointer' }}
-                            />
-                            <Text as="p" variant="bodyMd">Enforce unit/apartment</Text>
-                          </InlineStack>
-                          <Text tone="subdued">{pctMissingUnit}% of validations are missing apartment numbers.</Text>
-                        </BlockStack>
+                        <SettingToggle
+                          action={{
+                            content: enforceUnit ? "Disable" : "Enable",
+                            onAction: async () => {
+                              const next = !enforceUnit;
+                              setEnforceUnit(next);
+                              try {
+                                const res = await fetch(endpoints.settingsUpdate(), {
+                                  method: "PATCH",
+                                  headers: { "content-type": "application/json", ...auth },
+                                  body: JSON.stringify({ softMode: !next }),
+                                });
+                                if (!res.ok) throw new Error("failed");
+                                show("Validation mode updated.");
+                              } catch (err) {
+                                console.error(err);
+                                setEnforceUnit(!next);
+                                show("Could not save setting. Reverted.", { status: "error" });
+                              }
+                            }
+                          }}
+                          enabled={enforceUnit}
+                          title="Enforce unit/apartment"
+                        >
+                          {pctMissingUnit}% of validations are missing apartment numbers.
+                        </SettingToggle>
 
-                        <BlockStack gap="150">
-                          <InlineStack blockAlign="center" gap="200">
-                            <input
-                              type="checkbox"
-                              role="switch"
-                              aria-label="Auto-apply corrections"
-                              checked={autoApply}
-                              onChange={async (e) => {
-                                const next = e.target.checked;
-                                const prev = autoApply;
-                                setAutoApply(next);
-                                try {
-                                  const res = await fetch(endpoints.settingsUpdate(), {
-                                    method: "PATCH",
-                                    headers: { "content-type": "application/json", ...auth },
-                                    body: JSON.stringify({ autoApplyCorrections: next }),
-                                  });
-                                  if (!res.ok) throw new Error("failed");
-                                  show("Auto-apply corrections updated.");
-                                } catch (err) {
-                                  console.error(err);
-                                  setAutoApply(prev);
-                                  alert("Could not save setting. Reverted.");
-                                }
-                              }}
-                              style={{ width: 40, height: 20, borderRadius: 10, appearance: 'none', backgroundColor: autoApply ? '#00A047' : '#DDD', position: 'relative', cursor: 'pointer' }}
-                            />
-                            <Text as="p" variant="bodyMd">Auto-apply corrections</Text>
-                          </InlineStack>
-                          <Text tone="subdued">Automatically adjust corrections when possible</Text>
-                        </BlockStack>
-                      </BlockStack>
+                        <SettingToggle
+                          action={{
+                            content: autoApply ? "Disable" : "Enable",
+                            onAction: async () => {
+                              const next = !autoApply;
+                              setAutoApply(next);
+                              try {
+                                const res = await fetch(endpoints.settingsUpdate(), {
+                                  method: "PATCH",
+                                  headers: { "content-type": "application/json", ...auth },
+                                  body: JSON.stringify({ autoApplyCorrections: next }),
+                                });
+                                if (!res.ok) throw new Error("failed");
+                                show("Auto-apply corrections updated.");
+                              } catch (err) {
+                                console.error(err);
+                                setAutoApply(!next);
+                                show("Could not save setting. Reverted.", { status: "error" });
+                              }
+                            }
+                          }}
+                          enabled={autoApply}
+                          title="Auto-apply corrections"
+                        >
+                          Automatically adjust corrections when possible
+                        </SettingToggle>
+                      </FormLayout>
                     </Box>
                   </Box>
                 </Card>

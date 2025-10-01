@@ -1,10 +1,10 @@
-import { Card, Select, InlineStack } from "@shopify/polaris";
+import { Card, Select, InlineStack, Box } from "@shopify/polaris";
 import React from "react";
 
 export default function FilterBar({ range, setRange, segment, setSegment }) {
   return (
     <Card>
-      <div style={{ padding: 12 }}>
+      <Box padding="300">
         <InlineStack gap="400" wrap={false}>
           <Select
             label="Range"
@@ -28,7 +28,7 @@ export default function FilterBar({ range, setRange, segment, setSegment }) {
             onChange={setSegment}
           />
         </InlineStack>
-      </div>
+      </Box>
     </Card>
   );
 }

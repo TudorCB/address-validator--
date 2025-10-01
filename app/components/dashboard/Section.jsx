@@ -1,13 +1,14 @@
-import { Card, Text } from "@shopify/polaris";
+import { Card, Text, Box } from "@shopify/polaris";
 import React from "react";
 
 export default function Section({ title, children }) {
   return (
     <Card>
-      <div style={{ padding: 16 }}>
+      <Box padding="400">
         {title ? <Text as="h3" variant="headingMd">{title}</Text> : null}
-        <div style={{ marginTop: title ? 12 : 0 }}>{children}</div>
-      </div>
+        {title && <Box paddingBlockStart="300">{children}</Box>}
+        {!title && <>{children}</>}
+      </Box>
     </Card>
   );
 }
